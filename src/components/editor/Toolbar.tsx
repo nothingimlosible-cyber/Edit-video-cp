@@ -79,16 +79,16 @@ export default function Toolbar({
   }
 
   return (
-    <div className="bg-[#050505] border-t border-white/5 w-full relative">
+    <div className="bg-[#050505] border-t border-white/5 w-full h-full relative">
       <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#050505] to-transparent z-10 pointer-events-none" />
       <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#050505] to-transparent z-10 pointer-events-none" />
-      <div className="flex overflow-x-auto no-scrollbar h-20 items-center px-4 gap-1 w-full touch-pan-x overscroll-contain snap-x">
+      <div className="flex overflow-x-auto no-scrollbar h-full items-center px-4 gap-0 w-full touch-pan-x overscroll-contain snap-x">
         {currentTools.map((tool) => (
           <motion.button
             key={tool.id}
-            whileTap={{ scale: 0.95 }}
+            whileTap={{ scale: 0.92 }}
             className={cn(
-              "flex-shrink-0 w-20 h-full flex flex-col items-center justify-center gap-1 transition-all snap-center",
+              "flex-shrink-0 w-[72px] h-full flex flex-col items-center justify-center gap-1 transition-all snap-center",
               activeTab === tool.id ? "text-white" : "text-[#888] hover:text-white"
             )}
             onClick={() => {
@@ -110,9 +110,9 @@ export default function Toolbar({
               "p-2 rounded-xl transition-colors",
               activeTab === tool.id ? "bg-white/10" : "bg-transparent"
             )}>
-              <tool.icon className="w-5 h-5 stroke-[2]" />
+              <tool.icon className="w-[22px] h-[22px] stroke-[2]" />
             </div>
-            <span className="text-[9px] font-bold uppercase tracking-tight">{tool.label}</span>
+            <span className="text-[10px] font-bold uppercase tracking-tight leading-none whitespace-nowrap">{tool.label}</span>
           </motion.button>
         ))}
       </div>

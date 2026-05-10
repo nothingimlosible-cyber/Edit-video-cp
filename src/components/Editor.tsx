@@ -575,7 +575,7 @@ export default function Editor({ project, onBack }: EditorProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-[#050505]" ref={editorRef}>
+    <div className="flex flex-col h-full bg-[#050505] overflow-hidden" ref={editorRef}>
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -584,7 +584,7 @@ export default function Editor({ project, onBack }: EditorProps) {
         onChange={handleFileSelect}
       />
       {/* Header - Compact */}
-      <header className="p-3 flex items-center justify-between border-b border-[#222] bg-black">
+      <header className="flex-shrink-0 p-3 flex items-center justify-between border-b border-[#222] bg-black">
         <div className="flex items-center gap-2">
           <button onClick={onBack} className="p-1 text-[#666] hover:text-white transition-colors">
             <X className="w-5 h-5 stroke-[2.5]" />
@@ -708,7 +708,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       </AnimatePresence>
 
       {/* Preview Area - Maximized */}
-      <div className="flex-1 min-h-0 flex flex-col bg-black">
+      <div className="flex-1 min-h-0 flex flex-col bg-black overflow-hidden relative">
         <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden bg-black">
           <Preview 
             clips={clips} 
@@ -724,7 +724,7 @@ export default function Editor({ project, onBack }: EditorProps) {
         </div>
 
         {/* Playback & Time Info */}
-        <div className="px-4 py-2 flex items-center bg-black/80 border-t border-[#111] backdrop-blur-md">
+        <div className="flex-shrink-0 px-4 py-2 flex items-center bg-black/80 border-t border-[#111] backdrop-blur-md">
            <div className="flex-1 flex items-center gap-2">
               <span className="text-[10px] font-black font-mono text-white/90">
                 {formatTime(currentTime)}
@@ -807,7 +807,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       </div>
 
       {/* Timeline Section - Optimized for fingers */}
-      <div className="h-[28%] flex flex-col bg-black border-t border-[#222]">
+      <div className="flex-shrink-0 h-[30%] flex flex-col bg-black border-t border-[#222]">
         <div className="flex-1 relative overflow-hidden">
           <Timeline 
             clips={clips}
@@ -832,7 +832,7 @@ export default function Editor({ project, onBack }: EditorProps) {
         </div>
 
         {/* Toolbar & Sub-menus Area */}
-        <div className="relative w-full h-20 bg-black border-t border-white/5 z-[200]">
+        <div className="flex-shrink-0 relative w-full h-[72px] bg-black border-t border-white/5 z-[200]">
           <Toolbar 
             activeTab={activeTab}
             onSplit={handleSplit}
