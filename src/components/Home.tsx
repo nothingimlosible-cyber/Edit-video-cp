@@ -183,7 +183,7 @@ export default function Home({ onCreateProject, onOpenProject, onOpenPhotoEditor
         </div>
       </div>
 
-      {/* Bottom Nav */}
+      {/* Bottom Nav - Better spacing for mobile bars */}
       <nav className="fixed bottom-0 inset-x-0 bg-black/80 backdrop-blur-xl border-t border-white/5 h-[calc(80px+env(safe-area-inset-bottom))] px-8 flex justify-between items-center z-[100] pb-[calc(16px+env(safe-area-inset-bottom))]">
         {[
           { icon: Scissors, label: 'Edit', active: true },

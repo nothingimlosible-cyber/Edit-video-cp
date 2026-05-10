@@ -575,7 +575,7 @@ export default function Editor({ project, onBack }: EditorProps) {
   };
 
   return (
-    <div className="fixed inset-0 flex flex-col bg-[#050505] overflow-hidden" style={{ height: '100dvh' }} ref={editorRef}>
+    <div className="flex flex-col h-screen h-[100dvh] bg-[#050505] overflow-hidden" ref={editorRef}>
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -807,7 +807,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       </div>
 
       {/* Timeline Section - Optimized height */}
-      <div className="flex-shrink-0 h-[200px] flex flex-col bg-black border-t border-[#222] z-10">
+      <div className="flex-shrink-0 h-[160px] flex flex-col bg-black border-t border-[#222] z-10">
         <div className="flex-1 relative overflow-hidden">
           <Timeline 
             clips={clips}
@@ -832,8 +832,8 @@ export default function Editor({ project, onBack }: EditorProps) {
         </div>
       </div>
 
-      {/* Toolbar Area */}
-      <div className="flex-shrink-0 h-[88px] bg-black border-t border-white/5 z-[200] pb-[calc(16px+env(safe-area-inset-bottom))]">
+      {/* Toolbar Area - Slightly taller with more safety padding */}
+      <div className="flex-shrink-0 h-[calc(88px+env(safe-area-inset-bottom))] bg-black border-t border-white/5 z-[200] pb-[calc(20px+env(safe-area-inset-bottom))]">
           <Toolbar 
             activeTab={activeTab}
             onSplit={handleSplit}
