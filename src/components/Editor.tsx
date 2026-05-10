@@ -785,16 +785,16 @@ export default function Editor({ project, onBack }: EditorProps) {
                 </div>
 
                 {/* Floating Action Bar (Responsive Mobile) */}
-                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/10 px-1 py-1 rounded-2xl shadow-2xl z-50 md:hidden">
+                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/70 backdrop-blur-3xl border border-white/20 px-2 py-2 rounded-2xl shadow-2xl z-50 md:hidden">
                    <button 
                       onClick={() => setIsPlaying(!isPlaying)}
-                      className="w-11 h-11 flex items-center justify-center bg-white text-black rounded-xl active:scale-90 transition-transform"
+                      className="w-12 h-12 flex items-center justify-center bg-white text-black rounded-xl active:scale-95 transition-transform"
                     >
-                      {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current translate-x-0.5" />}
+                      {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
                     </button>
-                    <div className="w-[1px] h-6 bg-white/10 mx-1" />
-                    <button className="p-3 text-white/60 hover:text-white transition-colors">
-                      <Maximize2 className="w-5 h-5" />
+                    <div className="w-[1px] h-8 bg-white/10 mx-2" />
+                    <button className="p-3.5 text-white/80 hover:text-white transition-colors">
+                      <Maximize2 className="w-6 h-6" />
                     </button>
                 </div>
               </div>
@@ -985,7 +985,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       </div>
 
       {/* Toolbar Area - Mobile Only */}
-      <div className="md:hidden flex-shrink-0 h-[calc(110px+env(safe-area-inset-bottom))] bg-black border-t border-white/5 z-[200] pb-[calc(40px+env(safe-area-inset-bottom))]">
+      <div className="md:hidden flex-shrink-0 h-[calc(140px+env(safe-area-inset-bottom))] bg-black border-t border-white/5 z-[200] pb-[calc(70px+env(safe-area-inset-bottom))]">
           <Toolbar 
             activeTab={activeTab}
             onSplit={handleSplit}
