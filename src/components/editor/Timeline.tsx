@@ -122,6 +122,15 @@ export default function Timeline({
         <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1.5px] h-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
       </div>
 
+      {/* Zoom Controls */}
+      <div className="absolute bottom-4 right-4 z-[200] hidden md:flex items-center gap-3 bg-black/60 backdrop-blur-xl border border-white/10 p-2 rounded-xl">
+         <button onClick={() => setZoom(z => Math.max(20, z - 10))} className="text-white/40 hover:text-white"><Maximize2 className="w-4 h-4 rotate-45" /></button>
+         <div className="w-24 h-1 bg-white/10 rounded-full relative">
+            <div className="absolute h-full bg-[#00c2cb] rounded-full" style={{ width: `${(zoom - 20) / 180 * 100}%` }} />
+         </div>
+         <button onClick={() => setZoom(z => Math.min(200, z + 10))} className="text-white/40 hover:text-white"><Maximize2 className="w-4 h-4" /></button>
+      </div>
+
       <div 
         ref={scrollRef}
         onScroll={handleScroll}

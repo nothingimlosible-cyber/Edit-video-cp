@@ -785,15 +785,15 @@ export default function Editor({ project, onBack }: EditorProps) {
                 </div>
 
                 {/* Floating Action Bar (Responsive Mobile) */}
-                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-1 py-1 rounded-2xl shadow-2xl z-50 md:hidden">
+                <div className="absolute bottom-10 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/60 backdrop-blur-2xl border border-white/10 px-1 py-1 rounded-2xl shadow-2xl z-50 md:hidden">
                    <button 
                       onClick={() => setIsPlaying(!isPlaying)}
-                      className="w-10 h-10 flex items-center justify-center bg-white text-black rounded-xl active:scale-90 transition-transform"
+                      className="w-11 h-11 flex items-center justify-center bg-white text-black rounded-xl active:scale-90 transition-transform"
                     >
                       {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current translate-x-0.5" />}
                     </button>
                     <div className="w-[1px] h-6 bg-white/10 mx-1" />
-                    <button className="p-2.5 text-white/60 hover:text-white transition-colors">
+                    <button className="p-3 text-white/60 hover:text-white transition-colors">
                       <Maximize2 className="w-5 h-5" />
                     </button>
                 </div>
@@ -836,12 +836,21 @@ export default function Editor({ project, onBack }: EditorProps) {
                   <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Properti Clip</span>
                 </div>
                 <div className="p-6 space-y-8">
+                   {/* Sync Info */}
+                   <div className="bg-[#00c2cb]/5 border border-[#00c2cb]/20 p-4 rounded-xl space-y-1">
+                      <div className="text-[8px] font-black uppercase text-[#00c2cb] tracking-widest">Sinkronisasi Media</div>
+                      <div className="text-[11px] font-bold text-white/80">Media mengikuti durasi asli file yang diunggah.</div>
+                   </div>
+
                    {/* Transform */}
                    <div className="space-y-4">
-                      <label className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em]">Transformasi</label>
+                      <label className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em]">Kontrol Clip</label>
                       <div className="grid grid-cols-2 gap-4">
                          <div className="space-y-2">
-                            <span className="text-[9px] text-white/40 font-bold block">Skala</span>
+                            <div className="flex justify-between items-center">
+                               <span className="text-[9px] text-white/40 font-bold block">Skala</span>
+                               <span className="text-[10px] text-[#00c2cb] font-mono">{Math.round((selectedClip?.scale || 1) * 100)}%</span>
+                            </div>
                             <input 
                               type="range" 
                               min="0.1" max="2" step="0.01" 
@@ -851,7 +860,10 @@ export default function Editor({ project, onBack }: EditorProps) {
                             />
                          </div>
                          <div className="space-y-2">
-                            <span className="text-[9px] text-white/40 font-bold block">Putar</span>
+                           <div className="flex justify-between items-center">
+                               <span className="text-[9px] text-white/40 font-bold block">Putar</span>
+                               <span className="text-[10px] text-[#00c2cb] font-mono">{selectedClip?.rotation || 0}°</span>
+                            </div>
                             <input 
                               type="range" 
                               min="0" max="360" 
@@ -861,6 +873,17 @@ export default function Editor({ project, onBack }: EditorProps) {
                             />
                          </div>
                       </div>
+                   </div>
+
+                   <div className="space-y-4">
+                      <label className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em]">Durasi ({formatTime(selectedClip?.duration || 0)})</label>
+                      <input 
+                        type="range" 
+                        min="0.1" max="60" step="0.1" 
+                        value={selectedClip?.duration || 3}
+                        onChange={(e) => handleUpdateClip(selectedClipId, { duration: parseFloat(e.target.value) })}
+                        className="w-full accent-[#00c2cb] h-1 bg-white/10 rounded-full appearance-none outline-none"
+                      />
                    </div>
 
                    <div className="pt-4 flex flex-col gap-3">
@@ -962,7 +985,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       </div>
 
       {/* Toolbar Area - Mobile Only */}
-      <div className="md:hidden flex-shrink-0 h-[calc(88px+env(safe-area-inset-bottom))] bg-black border-t border-white/5 z-[200] pb-[calc(20px+env(safe-area-inset-bottom))]">
+      <div className="md:hidden flex-shrink-0 h-[calc(110px+env(safe-area-inset-bottom))] bg-black border-t border-white/5 z-[200] pb-[calc(40px+env(safe-area-inset-bottom))]">
           <Toolbar 
             activeTab={activeTab}
             onSplit={handleSplit}
