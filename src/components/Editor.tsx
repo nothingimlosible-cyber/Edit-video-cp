@@ -583,26 +583,41 @@ export default function Editor({ project, onBack }: EditorProps) {
         accept={uploadType === 'audio' ? "audio/*" : uploadType === 'photo' ? "image/*" : "video/*,image/*"}
         onChange={handleFileSelect}
       />
-      {/* Header - Fixed height */}
-      <header className="flex-shrink-0 h-14 px-4 flex items-center justify-between border-b border-[#111] bg-black z-[100]">
-        <div className="flex items-center gap-4">
-          <button onClick={onBack} className="p-1 text-white hover:text-white/80 transition-colors">
+      {/* Header - CapCut Precision */}
+      <header className="flex-shrink-0 h-14 px-4 flex items-center justify-between border-b border-[#111] bg-black z-[200]">
+        <div className="flex items-center gap-5">
+          <button onClick={onBack} className="p-1 text-white active:scale-90 transition-transform">
             <X className="w-6 h-6 stroke-[2.5]" />
           </button>
-          <button className="p-1 text-white hover:text-white/80 transition-colors">
+          {/* Desktop Search */}
+          <div className="hidden md:flex items-center bg-[#1a1a1a] rounded-lg border border-white/5 px-3 py-1.5 w-64">
+            <Search className="w-4 h-4 text-white/40 mr-2" />
+            <input 
+              type="text" 
+              placeholder="Cari fitur atau efek..." 
+              className="bg-transparent border-none text-[11px] text-white placeholder:text-white/20 outline-none w-full"
+            />
+          </div>
+          {/* Mobile Search */}
+          <button className="md:hidden p-1 text-white/90 active:scale-90 transition-transform">
             <Search className="w-5 h-5" />
           </button>
         </div>
 
+        <div className="hidden md:flex flex-col items-center">
+          <span className="text-[10px] font-black text-white/20 tracking-[0.5em] uppercase">Project</span>
+          <span className="text-xs font-black text-white px-4 py-1 hover:bg-white/5 rounded transition-colors cursor-pointer">{project.name || 'VIDEO TANPA JUDUL'}</span>
+        </div>
+
         <div className="flex items-center gap-3">
-           <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] rounded-lg border border-white/5">
+           <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] rounded-lg border border-white/5 active:scale-95 transition-all">
              <Diamond className="w-3.5 h-3.5 text-[#42f2f2] fill-[#42f2f2]" />
-             <span className="text-[10px] font-black text-white italic">UHD AI</span>
+             <span className="text-[10px] font-black text-white italic tracking-wider">UHD AI</span>
              <ChevronDown className="w-3.5 h-3.5 text-white/40" />
            </button>
            <button 
             onClick={() => setShowExportDrawer(true)}
-            className="bg-[#00c2cb] hover:bg-[#00dae4] text-white px-5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-wide transition-all active:scale-95"
+            className="bg-[#00c2cb] hover:bg-[#00dae4] text-white px-5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-[0_0_15px_rgba(0,194,203,0.3)]"
           >
             Ekspor
           </button>
@@ -693,9 +708,69 @@ export default function Editor({ project, onBack }: EditorProps) {
         )}
       </AnimatePresence>
 
-      {/* Preview Area - Maximized */}
-      <div className="flex-1 min-h-0 flex flex-col bg-black overflow-hidden relative">
-        <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden bg-black">
+      {/* Responsive Main Shell */}
+      <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-black">
+        
+        {/* Desktop Left Sidebar Tabs - IDENTICAL TO CAPCUT WEB */}
+        <div className="hidden md:flex w-[72px] bg-black border-r border-[#111] flex-col items-center py-6 gap-8 z-[150]">
+          {[
+            { id: 'edit', icon: Scissors, label: 'Edit' },
+            { id: 'audio', icon: Music, label: 'Audio' },
+            { id: 'text', icon: Type, label: 'Teks' },
+            { id: 'overlay', icon: Layers, label: 'Overlay' },
+            { id: 'effects', icon: Wand2, label: 'Efek' },
+            { id: 'adjust', icon: Sliders, label: 'Sesuaikan' },
+          ].map(item => (
+            <button 
+              key={item.id}
+              onClick={() => setActiveTab(item.id)}
+              className={cn(
+                "flex flex-col items-center gap-1.5 transition-all group outline-none",
+                activeTab === item.id || (item.id === 'edit' && selectedClipId) ? "text-white" : "text-[#444] hover:text-white"
+              )}
+            >
+              <div className={cn(
+                "p-2 rounded-xl transition-all",
+                (activeTab === item.id || (item.id === 'edit' && selectedClipId)) ? "bg-white/10" : "group-hover:bg-white/5"
+              )}>
+                <item.icon className="w-5 h-5" />
+              </div>
+              <span className="text-[9px] font-black uppercase tracking-tight">{item.label}</span>
+            </button>
+          ))}
+        </div>
+
+        {/* Desktop Assets / Tool List Panel */}
+        <div className="hidden lg:flex w-72 bg-[#0a0a0a] border-r border-[#111] flex-col z-[140]">
+           <div className="h-14 px-5 flex items-center border-b border-white/5">
+              <span className="text-[11px] font-black uppercase tracking-[0.15em] text-white/80">{activeTab}</span>
+           </div>
+           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
+              <div className="grid grid-cols-2 gap-3">
+                 {Array.from({ length: 7 }).map((_, i) => (
+                    <div key={i} className="aspect-video bg-white/5 rounded-lg border border-white/5 hover:border-white/20 transition-all cursor-pointer overflow-hidden p-2 group">
+                       <div className="w-full h-full bg-[#111] rounded flex items-center justify-center">
+                          {activeTab === 'audio' ? <Music className="w-4 h-4 text-white/10 group-hover:text-white/30" /> : <Image className="w-4 h-4 text-white/10 group-hover:text-white/30" />}
+                       </div>
+                    </div>
+                 ))}
+                 <button 
+                  onClick={handleAddMedia}
+                  className="aspect-video rounded-lg border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:border-[#00c2cb] hover:bg-[#00c2cb]/5 transition-all group"
+                 >
+                    <Plus className="w-5 h-5 text-white/20 group-hover:text-[#00c2cb]" />
+                    <span className="text-[9px] font-black uppercase text-white/20 group-hover:text-[#00c2cb]">Impor</span>
+                 </button>
+              </div>
+           </div>
+        </div>
+
+        {/* Responsive Content Area */}
+        <div className="flex-1 flex flex-col bg-black overflow-hidden relative border-none">
+          <div className="flex-1 flex overflow-hidden">
+            {/* Center Panel (Preview) */}
+            <div className="flex-1 flex flex-col relative min-w-0 bg-black overflow-hidden">
+              <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden bg-black/20">
           <Preview 
             clips={clips} 
             currentTime={currentTime} 
@@ -707,127 +782,187 @@ export default function Editor({ project, onBack }: EditorProps) {
             onUpdateClip={handleUpdateClip}
             onUpdateEnd={() => pushToHistory(clipsRef.current)}
           />
-        </div>
+                </div>
 
-        {/* Action Controls row (just below preview) */}
-        <div className="flex-shrink-0 h-10 px-4 flex items-center justify-between bg-black">
-          <div className="flex items-center gap-4">
-             <button className="text-white/60 hover:text-white transition-colors">
-               <Maximize2 className="w-5 h-5" />
-             </button>
-          </div>
-          
-          <div className="flex items-center">
-             <button 
-                onClick={() => setIsPlaying(!isPlaying)}
-                className="w-10 h-10 flex items-center justify-center transition-transform active:scale-90"
-              >
-                {isPlaying ? <Pause className="w-5 h-5 fill-white text-white" /> : <Play className="w-5 h-5 fill-white text-white translate-x-0.5" />}
-              </button>
-          </div>
+                {/* Floating Action Bar (Responsive Mobile) */}
+                <div className="absolute bottom-6 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/40 backdrop-blur-xl border border-white/10 px-1 py-1 rounded-2xl shadow-2xl z-50 md:hidden">
+                   <button 
+                      onClick={() => setIsPlaying(!isPlaying)}
+                      className="w-10 h-10 flex items-center justify-center bg-white text-black rounded-xl active:scale-90 transition-transform"
+                    >
+                      {isPlaying ? <Pause className="w-5 h-5 fill-current" /> : <Play className="w-5 h-5 fill-current translate-x-0.5" />}
+                    </button>
+                    <div className="w-[1px] h-6 bg-white/10 mx-1" />
+                    <button className="p-2.5 text-white/60 hover:text-white transition-colors">
+                      <Maximize2 className="w-5 h-5" />
+                    </button>
+                </div>
+              </div>
 
-          <div className="flex items-center gap-4">
-             <button 
-                onClick={handleToggleKeyframe}
-                className={cn(
-                  "p-1.5 rounded transition-all",
-                  selectedClipId && clips.find(c => c.id === selectedClipId)?.keyframes.some(k => Math.abs(k.time - (currentTime - (clips.find(c => c.id === selectedClipId)?.start || 0))) < 0.1)
-                    ? "bg-[#00c2cb] text-white"
-                    : "text-white/40 hover:text-white"
-                )}
-              >
-                <Diamond className="w-5 h-5 fill-current" />
-             </button>
-             <button 
-                onClick={undo}
-                disabled={historyIndex === 0}
-                className={cn("transition-colors", historyIndex === 0 ? "text-white/20" : "text-white hover:text-white/80")}
-              >
-                <CornerUpLeft className="w-5 h-5" />
-             </button>
-             <button 
-                onClick={redo}
-                disabled={historyIndex === history.length - 1}
-                className={cn("transition-colors", historyIndex === history.length - 1 ? "text-white/20" : "text-white hover:text-white/80")}
-              >
-                <CornerUpRight className="w-5 h-5" />
-             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Timeline Section Area */}
-      <div className="flex-shrink-0 flex flex-col bg-[#0a0a0a] border-t border-[#1a1a1a] z-10">
-        {/* Time Info row */}
-        <div className="h-10 px-4 flex items-center justify-between border-b border-white/5">
-           <div className="text-[11px] font-black font-mono text-white/90">
-             {formatTime(currentTime)} <span className="text-white/20 mx-1">/</span> <span className="text-white/40">{formatTime(totalDuration)}</span>
+              {/* Sub-preview controls info - Desktop Only Toolbar above Timeline */}
+              <div className="hidden md:flex h-12 border-b border-[#111] bg-[#050505] items-center justify-between px-6">
+                 <div className="flex items-center gap-6">
+                    <div className="text-[11px] font-black font-mono tracking-tighter text-white">
+                      {formatTime(currentTime)} / {formatTime(totalDuration)}
+                    </div>
+                    <div className="flex items-center gap-3">
+                       <button onClick={undo} disabled={historyIndex === 0} className="p-1 disabled:opacity-20 text-white/60 hover:text-white transition-opacity"><CornerUpLeft className="w-4 h-4" /></button>
+                       <button onClick={redo} disabled={historyIndex === history.length - 1} className="p-1 disabled:opacity-20 text-white/60 hover:text-white transition-opacity"><CornerUpRight className="w-4 h-4" /></button>
+                    </div>
+                 </div>
+                 <div className="flex items-center gap-5">
+                    <button 
+                      onClick={() => setIsPlaying(!isPlaying)}
+                      className="flex items-center justify-center text-white active:scale-90 transition-transform"
+                    >
+                      {isPlaying ? <Pause className="w-5 h-5 fill-white" /> : <Play className="w-5 h-5 fill-white translate-x-0.5" />}
+                    </button>
+                    <div className="w-[1px] h-4 bg-white/5" />
+                    <button onClick={handleToggleKeyframe} className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all outline-none", selectedClipId && clips.find(c => c.id === selectedClipId)?.keyframes.some(k => Math.abs(k.time - (currentTime - (clips.find(c => c.id === selectedClipId)?.start || 0))) < 0.1) ? "bg-[#00c2cb]/10 border-[#00c2cb] text-[#00c2cb]" : "bg-white/5 border-white/5 text-white/40 hover:text-white")}>
+                       <Diamond className="w-3.5 h-3.5 fill-current" />
+                       <span className="text-[9px] font-black uppercase">Keyframe</span>
+                    </button>
+                 </div>
+                 <div className="flex items-center gap-2">
+                    <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] px-2 py-1 bg-white/5 rounded">Live Player</div>
+                 </div>
+              </div>
            </div>
-           <div className="text-[10px] font-black uppercase text-white/20 tracking-widest">
-             00:00 • 00:01 • 00:02 • 00:03
-           </div>
-        </div>
 
-        <div className="flex h-[200px]">
-          {/* Timeline Sidebar */}
-          <div className="w-[84px] bg-black border-r border-white/5 flex flex-col pt-4">
-             <div className="flex flex-col items-center gap-6">
-                <button 
-                  onClick={() => setIsMuted(!isMuted)}
-                  className="flex flex-col items-center gap-1 group"
-                >
-                  <div className={cn("w-10 h-10 rounded-lg flex items-center justify-center transition-colors", isMuted ? "bg-[#00c2cb]/10 text-[#00c2cb]" : "bg-white/5 text-white/40 group-hover:bg-white/10")}>
-                    <Volume2 className={cn("w-5 h-5", isMuted && "fill-current")} />
-                  </div>
-                  <span className="text-[7.5px] font-black uppercase text-[#666] leading-tight text-center">Bisukan<br/>audio</span>
-                </button>
-
-                <button className="flex flex-col items-center gap-1 group">
-                   <div className="w-10 h-10 rounded-lg bg-white/5 text-white/40 flex items-center justify-center group-hover:bg-white/10 transition-colors">
-                     <Wand2 className="w-[18px] h-[18px]" />
-                   </div>
-                   <span className="text-[7.5px] font-black uppercase text-[#666] leading-tight text-center">Pemotong<br/>klip AI</span>
-                </button>
-
-                <button className="flex flex-col items-center gap-1 group">
-                   <div className="w-10 h-10 rounded-lg bg-white/5 border border-white/10 overflow-hidden group-hover:border-white/20 transition-colors relative">
-                      <Image className="w-full h-full p-2.5 text-white/20" />
-                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center">
-                        <Scissors className="w-3.5 h-3.5 text-white rotate-90" />
+           {/* Right Sidebar (Desktop - Properties Panel) */}
+           {selectedClipId && (
+             <div className="hidden md:flex w-80 bg-[#0a0a0a] border-l border-[#111] flex-col overflow-y-auto custom-scrollbar">
+                <div className="h-14 px-6 flex items-center border-b border-white/5 sticky top-0 bg-[#0a0a0a] z-10">
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Properti Clip</span>
+                </div>
+                <div className="p-6 space-y-8">
+                   {/* Transform */}
+                   <div className="space-y-4">
+                      <label className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em]">Transformasi</label>
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="space-y-2">
+                            <span className="text-[9px] text-white/40 font-bold block">Skala</span>
+                            <input 
+                              type="range" 
+                              min="0.1" max="2" step="0.01" 
+                              value={selectedClip?.scale || 1}
+                              onChange={(e) => handleUpdateClip(selectedClipId, { scale: parseFloat(e.target.value) })}
+                              className="w-full accent-[#00c2cb] h-1 bg-white/10 rounded-full appearance-none outline-none"
+                            />
+                         </div>
+                         <div className="space-y-2">
+                            <span className="text-[9px] text-white/40 font-bold block">Putar</span>
+                            <input 
+                              type="range" 
+                              min="0" max="360" 
+                              value={selectedClip?.rotation || 0}
+                              onChange={(e) => handleUpdateClip(selectedClipId, { rotation: parseInt(e.target.value) })}
+                              className="w-full accent-[#00c2cb] h-1 bg-white/10 rounded-full appearance-none outline-none"
+                            />
+                         </div>
                       </div>
                    </div>
-                   <span className="text-[7.5px] font-black uppercase text-[#666] leading-tight text-center">Sampul</span>
-                </button>
-             </div>
-          </div>
 
-          <div className="flex-1 relative overflow-hidden bg-[#050505]">
-            <Timeline 
-              clips={clips}
-              currentTime={currentTime}
-              duration={totalDuration}
-              onTimeChange={setCurrentTime}
-              selectedClipId={selectedClipId}
-              onClipSelect={(id) => {
-                setSelectedClipId(id);
-                if (id) setActiveTab('edit');
-              }}
-              onAddMedia={handleAddMedia}
-              onAddText={handleAddText}
-              onSplit={handleSplit}
-              onUpdateClip={handleUpdateClip}
-              onUpdateEnd={() => pushToHistory(clipsRef.current)}
-              onTabChange={setActiveTab}
-              onReorderClips={handleReorderClips}
-              isMuted={isMuted}
-              onToggleMute={() => setIsMuted(!isMuted)}
-            />
+                   <div className="pt-4 flex flex-col gap-3">
+                      <button 
+                        onClick={handleDelete}
+                        className="w-full py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all outline-none"
+                      >
+                        Hapus Clip
+                      </button>
+                      <button 
+                        onClick={handleCopy}
+                        className="w-full py-3 bg-white/5 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all outline-none"
+                      >
+                        Duplikat Clip
+                      </button>
+                   </div>
+                </div>
+             </div>
+           )}
+          {/* Timeline Section Area */}
+          <div className="flex-shrink-0 flex flex-col bg-[#050505] border-t border-[#111] z-10 md:h-[350px]">
+            {/* Time Info row - Improved for desktop */}
+            <div className="h-10 px-4 flex items-center justify-between border-b border-white/5 bg-[#080808]">
+               <div className="text-[11px] font-black font-mono tracking-tighter text-white/90">
+                 {formatTime(currentTime)} <span className="text-white/20 mx-1">/</span> <span className="text-white/40">{formatTime(totalDuration)}</span>
+               </div>
+               <div className="hidden md:flex items-center gap-4 mr-4">
+                  <div className="flex bg-[#111] rounded-lg p-1 gap-1">
+                     <button className="px-3 py-1 bg-white/10 rounded text-[9px] font-black uppercase text-white outline-none">Video</button>
+                     <button className="px-3 py-1 text-[9px] font-black uppercase text-white/20 hover:text-white outline-none">Audio</button>
+                  </div>
+               </div>
+               <div className="text-[9px] font-black uppercase text-white/10 tracking-[0.3em] flex items-center gap-6">
+                 <span>00:00</span>
+                 <span>00:01</span>
+                 <span>00:02</span>
+                 <span>00:03</span>
+               </div>
+            </div>
+
+            <div className="flex-1 flex overflow-hidden">
+              {/* Timeline Sidebar - CapCut Styled */}
+              <div className="w-[84px] bg-[#0a0a0a] border-r border-[#111] flex flex-col pt-6 z-20 overflow-y-hidden">
+                 <div className="flex flex-col items-center gap-7">
+                    <button 
+                      onClick={() => setIsMuted(!isMuted)}
+                      className="flex flex-col items-center gap-1.5 group outline-none"
+                    >
+                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all", isMuted ? "bg-[#00c2cb]/10 text-[#00c2cb]" : "bg-white/5 text-white/50 group-hover:bg-white/10")}>
+                        <Volume2 className={cn("w-[22px] h-[22px]", isMuted && "fill-current")} />
+                      </div>
+                      <span className="text-[8px] font-black uppercase text-[#444] text-center leading-[1.1] tracking-tight">Bisukan<br/>audio</span>
+                    </button>
+
+                    <button className="hidden md:flex flex-col items-center gap-1.5 group outline-none">
+                       <div className="w-10 h-10 rounded-xl bg-white/5 text-white/50 flex items-center justify-center group-hover:bg-white/10 transition-all">
+                         <Target className="w-[18px] h-[18px]" />
+                       </div>
+                       <span className="text-[8px] font-black uppercase text-[#444] text-center leading-[1.1] tracking-tight">Fokus<br/>klip</span>
+                    </button>
+
+                    <button className="flex flex-col items-center gap-1.5 group outline-none">
+                       <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden group-hover:border-white/20 transition-all relative">
+                          <Image className="w-full h-full p-2.5 text-white/10" />
+                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
+                            <Scissors className="w-4 h-4 text-white rotate-90" />
+                          </div>
+                       </div>
+                       <span className="text-[8px] font-black uppercase text-[#444] text-center leading-[1.1] tracking-tight">Sampul</span>
+                    </button>
+                 </div>
+              </div>
+
+              <div className="flex-1 relative overflow-hidden bg-[#050505]">
+                <Timeline 
+                  clips={clips}
+                  currentTime={currentTime}
+                  duration={totalDuration}
+                  onTimeChange={setCurrentTime}
+                  selectedClipId={selectedClipId}
+                  onClipSelect={(id) => {
+                    setSelectedClipId(id);
+                    if (id) setActiveTab('edit');
+                  }}
+                  onAddMedia={handleAddMedia}
+                  onAddText={handleAddText}
+                  onSplit={handleSplit}
+                  onUpdateClip={handleUpdateClip}
+                  onUpdateEnd={() => pushToHistory(clipsRef.current)}
+                  onTabChange={setActiveTab}
+                  onReorderClips={handleReorderClips}
+                  isMuted={isMuted}
+                  onToggleMute={() => setIsMuted(!isMuted)}
+                />
+              </div>
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Toolbar Area - Slightly taller with more safety padding */}
-      <div className="flex-shrink-0 h-[calc(88px+env(safe-area-inset-bottom))] bg-black border-t border-white/5 z-[200] pb-[calc(20px+env(safe-area-inset-bottom))]">
+      {/* Toolbar Area - Mobile Only */}
+      <div className="md:hidden flex-shrink-0 h-[calc(88px+env(safe-area-inset-bottom))] bg-black border-t border-white/5 z-[200] pb-[calc(20px+env(safe-area-inset-bottom))]">
           <Toolbar 
             activeTab={activeTab}
             onSplit={handleSplit}
@@ -837,14 +972,7 @@ export default function Editor({ project, onBack }: EditorProps) {
             onAddSticker={handleAddSticker}
             onAddAudio={handleAddAudio}
             onAddMedia={handleAddMedia}
-            onDelete={() => {
-              if (selectedClipId) {
-                const nextClips = clips.filter(c => c.id !== selectedClipId);
-                setClips(nextClips);
-                pushToHistory(nextClips);
-                setSelectedClipId(null);
-              }
-            }}
+            onDelete={handleDelete}
             canSplit={!!selectedClipId}
             selectedClipType={clips.find(c => c.id === selectedClipId)?.type}
             onTabChange={(tab) => {
@@ -852,7 +980,6 @@ export default function Editor({ project, onBack }: EditorProps) {
               if (tab === 'main') {
                 setSelectedClipId(null);
               } else if (tab === 'edit' && !selectedClipId) {
-                // Find clip at playhead or just first clip to reveal features
                 const clipAtPlayhead = clips.find(c => currentTime >= c.start && currentTime <= c.start + c.duration);
                 if (clipAtPlayhead) setSelectedClipId(clipAtPlayhead.id);
                 else if (clips.length > 0) setSelectedClipId(clips[0].id);

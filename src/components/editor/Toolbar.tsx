@@ -79,17 +79,17 @@ export default function Toolbar({
   }
 
   return (
-    <div className="bg-[#050505] border-t border-white/5 w-full h-full relative">
-      <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-[#050505] to-transparent z-10 pointer-events-none" />
-      <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-[#050505] to-transparent z-10 pointer-events-none" />
+    <div className="bg-black border-t border-white/5 w-full h-full relative">
+      <div className="absolute inset-y-0 left-0 w-8 bg-gradient-to-r from-black to-transparent z-10 pointer-events-none" />
+      <div className="absolute inset-y-0 right-0 w-8 bg-gradient-to-l from-black to-transparent z-10 pointer-events-none" />
       <div className="flex overflow-x-auto no-scrollbar h-full items-center px-4 gap-0 w-full touch-pan-x overscroll-contain snap-x">
         {currentTools.map((tool) => (
           <motion.button
             key={tool.id}
-            whileTap={{ scale: 0.92 }}
+            whileTap={{ scale: 0.9 }}
             className={cn(
-              "flex-shrink-0 w-[72px] h-full flex flex-col items-center justify-center gap-1 transition-all snap-center",
-              activeTab === tool.id ? "text-white" : "text-[#888] hover:text-white"
+              "flex-shrink-0 w-[78px] h-full flex flex-col items-center justify-center gap-1.5 transition-all snap-center",
+              activeTab === tool.id ? "text-white" : "text-[#999] hover:text-white"
             )}
             onClick={() => {
               if (tool.id === 'back') onTabChange('main');
@@ -107,12 +107,12 @@ export default function Toolbar({
             }}
           >
             <div className={cn(
-              "p-2 rounded-xl transition-colors",
-              activeTab === tool.id ? "bg-white/10" : "bg-transparent"
+              "p-1.5 rounded-lg transition-transform",
+              activeTab === tool.id ? "scale-110" : ""
             )}>
-              <tool.icon className="w-[22px] h-[22px] stroke-[2]" />
+              <tool.icon className={cn("w-6 h-6 stroke-[2.2]", activeTab === tool.id && "text-white")} />
             </div>
-            <span className="text-[10px] font-bold uppercase tracking-tight leading-none whitespace-nowrap">{tool.label}</span>
+            <span className="text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap">{tool.label}</span>
           </motion.button>
         ))}
       </div>

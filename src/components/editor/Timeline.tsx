@@ -141,7 +141,7 @@ export default function Timeline({
               className="absolute top-0 bottom-0 w-[2px] bg-white/30 z-[60]"
               style={{ left: `${duration * pixelsPerSecond}px` }}
             />
-            {/* Time Rulers */}
+            {/* Time Rulers - CapCut Style dots and lines */}
             <div className="absolute top-0 left-0 right-0 h-10 flex items-end pointer-events-none border-b border-white/5 bg-black/20">
               {Array.from({ length: Math.ceil(duration) + 1 }).map((_, i) => (
                 <div 
@@ -149,20 +149,14 @@ export default function Timeline({
                   className="absolute flex flex-col items-center" 
                   style={{ left: `${i * pixelsPerSecond}px` }}
                 >
-                  <div className="w-[1px] h-3 bg-white/30" />
-                  <span className="text-[8px] font-bold text-white/40 mt-1 absolute top-0 -translate-y-4">
-                    {i < 10 ? `00:0${i}` : `00:${i}`}
-                  </span>
+                  <div className="w-[1.5px] h-2 bg-white/20" />
                   
-                  {/* Millisecond ticks */}
-                  {Array.from({ length: 9 }).map((_, j) => (
+                  {/* Fine Ruler Ticks */}
+                  {Array.from({ length: 4 }).map((_, j) => (
                      <div 
                       key={j} 
-                      className={cn(
-                        "absolute w-[1px] bg-white/10",
-                        (j + 1) === 5 ? "h-2 bg-white/20" : "h-1"
-                      )}
-                      style={{ left: `${(j + 1) * (pixelsPerSecond / 10)}px`, bottom: 0 }} 
+                      className="absolute w-[1px] h-1 bg-white/10"
+                      style={{ left: `${(j + 1) * (pixelsPerSecond / 5)}px`, bottom: 0 }} 
                     />
                   ))}
                 </div>
