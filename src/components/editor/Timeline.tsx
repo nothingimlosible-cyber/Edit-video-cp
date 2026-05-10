@@ -110,41 +110,6 @@ export default function Timeline({
       onMouseDown={() => { if (!draggingClipId) setIsScrolling(true); }}
       onMouseUp={() => setIsScrolling(false)}
     >
-      {/* Fixed Vertical Controls at the front */}
-      <div className="absolute left-0 top-0 bottom-0 z-[120] flex flex-col items-center py-4 px-1.5 bg-[#0a0a0a] border-r border-white/5 w-14 shadow-[10px_0_30px_rgba(0,0,0,0.5)]">
-        <div className="flex flex-col items-center gap-3 mt-4">
-          <button className="w-11 h-11 rounded-2xl bg-neutral-900 border border-white/10 flex flex-col items-center justify-center pointer-events-auto active:scale-90 transition-all group shadow-xl">
-            <Maximize2 className="w-4 h-4 text-white hover:scale-110 transition-transform" />
-            <span className="text-[7px] font-black uppercase text-white/60 tracking-wider mt-0.5">Sampul</span>
-          </button>
-          
-          <button 
-            onClick={onToggleMute}
-            className={cn(
-              "w-11 h-11 rounded-2xl border flex flex-col items-center justify-center pointer-events-auto active:scale-90 transition-all group shadow-xl",
-              isMuted ? "bg-white border-white" : "bg-neutral-900 border-white/10"
-            )}
-          >
-            <Volume2 className={cn("w-4 h-4 transition-transform", isMuted ? "text-black" : "text-white hover:scale-110")} />
-            <span className={cn("text-[7px] font-black uppercase tracking-wider mt-0.5", isMuted ? "text-black/60" : "text-white/60")}>
-              {isMuted ? 'Mati' : 'Bisu'}
-            </span>
-          </button>
-        </div>
-        
-        <div className="mt-auto mb-6">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              onAddMedia();
-            }}
-            className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-[0_8px_30px_rgba(255,255,255,0.3)] active:scale-90 transition-all pointer-events-auto hover:scale-110 z-[130]"
-          >
-            <Plus className="w-7 h-7 stroke-[3.5]" />
-          </button>
-        </div>
-      </div>
-
       {/* Playhead - exactly at the center of the container */}
       <div className="absolute top-0 bottom-0 left-1/2 w-[1px] z-[150] pointer-events-none transition-colors duration-150"
         style={{ backgroundColor: isSnapped ? '#ffffff' : 'rgba(255, 255, 255, 0.8)' }}

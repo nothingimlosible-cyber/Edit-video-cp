@@ -19,16 +19,16 @@ interface ToolbarProps {
 
 const TOOL_BARS = {
   main: [
-    { id: 'impor', icon: Plus, label: 'Impor' },
     { id: 'edit-root', icon: Scissors, label: 'Edit' },
     { id: 'audio', icon: Music, label: 'Audio' },
     { id: 'text', icon: Type, label: 'Teks' },
-    { id: 'overlay', icon: Layers, label: 'Overlay' },
     { id: 'effects', icon: Wand2, label: 'Efek' },
+    { id: 'overlay', icon: Layers, label: 'Overlay' },
+    { id: 'captions', icon: MessageSquare, label: 'Keterangan' },
+    { id: 'impor', icon: Plus, label: 'Tambah' },
     { id: 'ratio', icon: Maximize2, label: 'Aspek' },
     { id: 'canvas', icon: Square, label: 'Kanvas' },
     { id: 'adjust-root', icon: Sliders, label: 'Sesuaikan' },
-    { id: 'stickers', icon: Smile, label: 'Stiker' },
   ],
   edit: [
     { id: 'back', icon: ChevronLeft, label: 'Menu', action: 'back' },
