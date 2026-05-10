@@ -75,18 +75,18 @@ jobs:
             npx cap add android
           fi
           npx cap copy android
-          # Remove corrupt wrapper jar to bypass validation
-          rm -f android/gradle/wrapper/gradle-wrapper.jar
 
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: 8.5
+          gradle-version: 8.10.2
 
       - name: Build Android APK
         run: |
           cd android
-          gradle assembleDebug --stacktrace --info
+          # Regenerate wrapper to fix any corruption issues
+          gradle wrapper --gradle-version 8.10.2
+          ./gradlew assembleDebug --stacktrace --info
       
       - name: Upload APK
         uses: actions/upload-artifact@v4
