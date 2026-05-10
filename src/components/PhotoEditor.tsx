@@ -154,12 +154,12 @@ export default function PhotoEditor({ onBack }: PhotoEditorProps) {
 
       {/* Controls Panel */}
       <div className={cn(
-        "fixed bottom-0 left-0 w-full bg-zinc-900 border-t border-zinc-800 p-5 z-50 rounded-t-3xl transition-transform duration-300",
-        !isControlsVisible && "translate-y-[calc(100%-40px)]"
+        "fixed bottom-0 left-0 w-full bg-zinc-900 border-t border-zinc-800 p-5 z-50 rounded-t-3xl transition-transform duration-300 pb-[calc(1.25rem+env(safe-area-inset-bottom))]",
+        !isControlsVisible && "translate-y-[calc(100%-54px-env(safe-area-inset-bottom))]"
       )}>
         <button 
           onClick={() => setIsControlsVisible(!isControlsVisible)}
-          className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500 shadow-xl"
+          className="absolute -top-4 left-1/2 -translate-x-1/2 w-8 h-8 rounded-full bg-zinc-800 border border-zinc-700 flex items-center justify-center text-zinc-500 shadow-xl z-50"
         >
           {isControlsVisible ? <ChevronDown className="w-4 h-4" /> : <ChevronDown className="w-4 h-4 rotate-180" />}
         </button>

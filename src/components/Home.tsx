@@ -143,9 +143,9 @@ export default function Home({ onCreateProject, onOpenProject, onOpenPhotoEditor
       </div>
 
       {/* Recent Projects */}
-      <div className="px-6 mt-12">
+      <div className="px-6 mt-10">
         <h2 className="text-[10px] font-black text-[#666] tracking-[0.2em] uppercase mb-4">Proyek Terbaru</h2>
-        <div className="flex overflow-x-auto gap-4 no-scrollbar pb-4">
+        <div className="flex overflow-x-auto gap-4 no-scrollbar pb-6">
           {RECENT_PROJECTS.map((project) => (
             <motion.button
               key={project.id}
@@ -183,8 +183,8 @@ export default function Home({ onCreateProject, onOpenProject, onOpenPhotoEditor
         </div>
       </div>
 
-      {/* Bottom Nav Mockup */}
-      <nav className="fixed bottom-0 inset-x-0 bg-black border-t border-[#222] h-16 px-8 flex justify-between items-center z-50">
+      {/* Bottom Nav */}
+      <nav className="fixed bottom-0 inset-x-0 bg-black/80 backdrop-blur-xl border-t border-white/5 h-[calc(80px+env(safe-area-inset-bottom))] px-8 flex justify-between items-center z-[100] pb-[calc(16px+env(safe-area-inset-bottom))]">
         {[
           { icon: Scissors, label: 'Edit', active: true },
           { icon: LayoutGrid, label: 'Template' },

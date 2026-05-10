@@ -575,7 +575,7 @@ export default function Editor({ project, onBack }: EditorProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen h-[100dvh] bg-[#050505] overflow-hidden" ref={editorRef}>
+    <div className="fixed inset-0 flex flex-col bg-[#050505] overflow-hidden" style={{ height: '100dvh' }} ref={editorRef}>
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -583,8 +583,8 @@ export default function Editor({ project, onBack }: EditorProps) {
         accept={uploadType === 'audio' ? "audio/*" : uploadType === 'photo' ? "image/*" : "video/*,image/*"}
         onChange={handleFileSelect}
       />
-      {/* Header - Compact */}
-      <header className="flex-shrink-0 p-3 flex items-center justify-between border-b border-[#222] bg-black">
+      {/* Header - Fixed height */}
+      <header className="flex-shrink-0 h-14 px-3 flex items-center justify-between border-b border-[#222] bg-black z-[100]">
         <div className="flex items-center gap-2">
           <button onClick={onBack} className="p-1 text-[#666] hover:text-white transition-colors">
             <X className="w-5 h-5 stroke-[2.5]" />
@@ -806,8 +806,8 @@ export default function Editor({ project, onBack }: EditorProps) {
         </div>
       </div>
 
-      {/* Timeline Section - Optimized for fingers */}
-      <div className="flex-shrink-0 h-[220px] sm:h-[30%] flex flex-col bg-black border-t border-[#222]">
+      {/* Timeline Section - Optimized height */}
+      <div className="flex-shrink-0 h-[200px] flex flex-col bg-black border-t border-[#222] z-10">
         <div className="flex-1 relative overflow-hidden">
           <Timeline 
             clips={clips}
@@ -832,8 +832,8 @@ export default function Editor({ project, onBack }: EditorProps) {
         </div>
       </div>
 
-      {/* Toolbar - Direct child of main container for stability */}
-      <div className="flex-shrink-0 h-[72px] bg-black border-t border-white/5 z-[200]">
+      {/* Toolbar Area */}
+      <div className="flex-shrink-0 h-[88px] bg-black border-t border-white/5 z-[200] pb-[calc(16px+env(safe-area-inset-bottom))]">
           <Toolbar 
             activeTab={activeTab}
             onSplit={handleSplit}
