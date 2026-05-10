@@ -1,0 +1,9 @@
+{
+  "name": "CapStream - Mobile Editor",
+  "description": "A professional mobile-first video editing application with timeline, overlays, and advanced editing tools.",
+  "requestFramePermissions": [
+    "camera",
+    "microphone"
+  ],
+  "majorCapabilities": []
+}
