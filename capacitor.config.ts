@@ -1,7 +1,7 @@
 import { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'com.capstream.editor',
+  appId: 'com.capstream.mobile',
   appName: 'CapStream',
   webDir: 'dist',
   server: {
