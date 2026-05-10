@@ -72,7 +72,8 @@ export default function Home({ onCreateProject, onOpenProject, onOpenPhotoEditor
   };
 
   return (
-    <div className="flex flex-col h-screen overflow-y-auto pb-20 bg-[#050505]">
+    <div className="flex flex-col h-screen h-[100dvh] overflow-hidden bg-[#050505]">
+      <div className="flex-1 overflow-y-auto pb-20">
       {/* Hidden File Input */}
       <input 
         type="file" 
@@ -197,6 +198,7 @@ export default function Home({ onCreateProject, onOpenProject, onOpenPhotoEditor
           </div>
         ))}
       </nav>
+      </div>
     </div>
   );
 }

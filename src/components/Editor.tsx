@@ -575,7 +575,7 @@ export default function Editor({ project, onBack }: EditorProps) {
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#050505] overflow-hidden" ref={editorRef}>
+    <div className="flex flex-col h-screen h-[100dvh] bg-[#050505] overflow-hidden" ref={editorRef}>
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -708,7 +708,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       </AnimatePresence>
 
       {/* Preview Area - Maximized */}
-      <div className="flex-1 min-h-0 flex flex-col bg-black overflow-hidden relative">
+      <div className="flex-1 min-h-0 flex flex-col bg-black overflow-hidden relative justify-center">
         <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden bg-black">
           <Preview 
             clips={clips} 
@@ -807,7 +807,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       </div>
 
       {/* Timeline Section - Optimized for fingers */}
-      <div className="flex-shrink-0 h-[30%] flex flex-col bg-black border-t border-[#222]">
+      <div className="flex-shrink-0 h-[220px] sm:h-[30%] flex flex-col bg-black border-t border-[#222]">
         <div className="flex-1 relative overflow-hidden">
           <Timeline 
             clips={clips}
@@ -830,9 +830,10 @@ export default function Editor({ project, onBack }: EditorProps) {
             onToggleMute={() => setIsMuted(!isMuted)}
           />
         </div>
+      </div>
 
-        {/* Toolbar & Sub-menus Area */}
-        <div className="flex-shrink-0 relative w-full h-[72px] bg-black border-t border-white/5 z-[200]">
+      {/* Toolbar - Direct child of main container for stability */}
+      <div className="flex-shrink-0 h-[72px] bg-black border-t border-white/5 z-[200]">
           <Toolbar 
             activeTab={activeTab}
             onSplit={handleSplit}
@@ -864,7 +865,6 @@ export default function Editor({ project, onBack }: EditorProps) {
               }
             }}
           />
-        </div>
       </div>
 
       {/* Unified Overlay for all editing sub-menus */}

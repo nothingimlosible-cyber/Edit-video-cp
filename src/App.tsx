@@ -101,7 +101,7 @@ export default function App() {
   };
 
   return (
-    <div className="min-h-screen bg-[#0E0E0E] text-white overflow-hidden font-sans">
+    <div className="h-screen h-[100dvh] bg-[#0E0E0E] text-white overflow-hidden font-sans">
       {view === 'video' && currentProject ? (
         <Editor project={currentProject} onBack={handleBack} />
       ) : view === 'photo' ? (
