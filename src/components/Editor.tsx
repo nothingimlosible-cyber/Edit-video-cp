@@ -33,52 +33,36 @@ const DialSlider = ({
   label?: string 
 }) => {
   return (
-    <div className="flex flex-col gap-6 w-full items-center px-4">
-      <div className="flex flex-col items-center gap-1.5">
-         <span className="text-[10px] font-black tracking-[0.25em] text-white/20 uppercase select-none">{label}</span>
-         <div className="flex items-end gap-1">
-            <span className="text-2xl font-mono text-white tabular-nums select-none leading-none">
-              {unit === '%' ? Math.round(value) : value.toFixed(unit === '°' ? 0 : 0)}
-            </span>
-            {unit && <span className="text-[10px] font-black text-[#00c2cb] mb-1 select-none">{unit}</span>}
-         </div>
-      </div>
+    <div className="flex items-center gap-4 px-6 h-[38px] group/slider">
+      <span className="w-16 text-[11px] font-black uppercase text-white/40 tracking-wider font-sans truncate select-none">
+        {label}
+      </span>
       
-      <div className="relative w-full h-[88px] flex items-center justify-center bg-white/[0.03] rounded-3xl border border-white/[0.05] overflow-hidden group/dial">
+      <div className="flex-1 relative h-7 flex items-center justify-center overflow-hidden border-x border-white/5 bg-white/[0.01]">
          {/* Dial Markers */}
          <div className="absolute inset-x-0 h-full flex items-center justify-center pointer-events-none">
-           <div 
-              className="flex items-center gap-[5px] transition-transform duration-150 ease-out" 
-              style={{ transform: `translateX(${-(value - (min + max) / 2) * (1000 / (max - min || 1))}px)` }}
-           >
-             {Array.from({ length: 241 }).map((_, i) => {
-               const index = i - 120;
+            <div 
+              className="flex items-end gap-[6px] transition-transform duration-150 ease-out" 
+              style={{ transform: `translateX(${-(value - (min + max) / 2) * (400 / (max - min || 1))}px)` }}
+            >
+             {Array.from({ length: 81 }).map((_, i) => {
+               const index = i - 40;
                const isMain = index % 10 === 0;
-               const isMid = index % 5 === 0;
                return (
-                 <div 
-                   key={i} 
-                   className={cn(
-                     "w-[1.5px] rounded-full transition-all duration-300",
-                     index === 0 ? "h-10 bg-[#00c2cb] shadow-[0_0_10px_#00c2cb]" : 
-                     isMain ? "h-7 bg-white/40" : 
-                     isMid ? "h-4 bg-white/15" : "h-2 bg-white/5"
-                   )}
-                 />
+                  <div 
+                    key={i} 
+                    className={cn(
+                      "w-[1px] transition-all duration-300",
+                      isMain ? "h-3 bg-white/40" : "h-1.5 bg-white/10"
+                    )}
+                  />
                );
              })}
-           </div>
+            </div>
          </div>
          
          {/* Center Indicator */}
-         <div className="absolute top-0 bottom-0 w-[2px] bg-[#00c2cb] shadow-[0_0_20px_#00c2cb] z-20" />
-         
-         {/* Indicator Glow */}
-         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-[#00c2cb]/5 blur-xl pointer-events-none" />
-         
-         {/* Gradient Masks for fade effect at edges */}
-         <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#121212] to-transparent z-10 pointer-events-none" />
-         <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#121212] to-transparent z-10 pointer-events-none" />
+         <div className="absolute top-0 bottom-0 w-[1px] bg-[#00c2cb] z-20" />
          
          {/* Interaction Surface */}
          <input 
@@ -90,6 +74,13 @@ const DialSlider = ({
            onChange={(e) => onChange(parseFloat(e.target.value))}
            className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-30"
          />
+      </div>
+
+      <div className="w-8 flex items-center justify-end gap-0.5">
+        <span className="text-[13px] font-black text-white font-mono tabular-nums leading-none">
+          {Math.round(value)}
+        </span>
+        {unit && <span className="text-[11px] font-black text-white/20 mb-0.5 select-none">{unit}</span>}
       </div>
     </div>
   );
@@ -706,69 +697,71 @@ export default function Editor({ project, onBack }: EditorProps) {
         </div>
       </header>
 
-      {/* 2. MAIN LAYOUT (Header -> Preview -> Timeline -> Navigation) */}
+      {/* 2. MAIN LAYOUT (Header -> Preview -> Toolbar -> Timeline) */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         
-        {/* TOP HALF: Preview Area */}
-        <div className="flex-1 flex flex-col min-h-0 bg-black">
+        {/* TOP HALF: Preview Area (60%) */}
+        <div className="flex-[6] flex flex-col min-h-0 bg-black pt-4">
           
           {/* Preview Viewport */}
           <div className="flex-1 flex flex-col relative min-w-0 bg-[#080808] overflow-hidden">
              {/* Preview Content */}
-             <div className="flex-1 relative flex items-center justify-center p-0 md:p-8 overflow-hidden">
+             <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,194,203,0.03)_0%,transparent_70%)] pointer-events-none" />
                 
-                <Preview 
-                  clips={clips} 
-                  currentTime={currentTime} 
-                  selectedClipId={selectedClipId} 
-                  aspectRatio={aspectRatio}
-                  isPlaying={isPlaying}
-                  isMuted={isMuted}
-                  isTransforming={activeTab === 'transform'}
-                  onTogglePlay={() => setIsPlaying(!isPlaying)}
-                  onUpdateClip={handleUpdateClip}
-                  onUpdateEnd={() => pushToHistory(clipsRef.current)}
-                />
+                <div className="w-[90%] max-w-[320px] aspect-[9/16] relative flex items-center justify-center">
+                  <Preview 
+                    clips={clips} 
+                    currentTime={currentTime} 
+                    selectedClipId={selectedClipId} 
+                    aspectRatio={aspectRatio}
+                    isPlaying={isPlaying}
+                    isMuted={isMuted}
+                    isTransforming={activeTab === 'transform'}
+                    onTogglePlay={() => setIsPlaying(!isPlaying)}
+                    onUpdateClip={handleUpdateClip}
+                    onUpdateEnd={() => pushToHistory(clipsRef.current)}
+                  />
+                </div>
              </div>
-              {/* Preview Controls Bar (Maximize, Play, Undo/Redo) - Android Style */}
-             <div className="flex-shrink-0 h-9 md:h-16 border-t border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl flex items-center justify-between px-6 md:px-8">
+              {/* Toolbar: Preview Controls Bar (Maximize, Play, Undo/Redo) - CapCut Standar (10%) */}
+             <div className="flex-shrink-0 h-[50px] border-t border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl flex items-center justify-between px-2 mt-5">
                 <button 
                   onClick={() => editorRef.current?.requestFullscreen()}
-                  className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90"
+                  className="w-[42px] h-[42px] flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90"
                 >
-                  <Maximize2 className="w-3.5 h-3.5 md:w-5 md:h-5 rotate-45" />
+                  <Maximize2 className="w-6 h-6 rotate-45" />
                 </button>
                 
                 <button 
                   onClick={() => setIsPlaying(!isPlaying)}
-                  className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-white active:scale-75 transition-all"
+                  className="w-[42px] h-[42px] flex items-center justify-center text-white active:scale-75 transition-all"
                 >
                   {isPlaying ? (
                     <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                      <Pause className="w-6 h-6 md:w-9 md:h-9 fill-current" />
+                      <Pause className="w-6 h-6 fill-current" />
                     </motion.div>
                   ) : (
                     <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
-                      <Play className="w-6 h-6 md:w-9 md:h-9 fill-current translate-x-0.5" />
+                      <Play className="w-6 h-6 fill-current translate-x-0.5" />
                     </motion.div>
                   )}
                 </button>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center gap-[10px]">
                   <button 
                     onClick={undo} 
                     disabled={historyIndex === 0} 
-                    className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center disabled:opacity-5 text-white/40 hover:text-white transition-all active:scale-90"
+                    className="w-[42px] h-[42px] flex items-center justify-center disabled:opacity-5 text-white/40 hover:text-white transition-all active:scale-90"
                   >
-                    <Undo className="w-4 h-4 md:w-5 md:h-5" />
+                    <Undo className="w-6 h-6" />
                   </button>
                   <button 
                     onClick={redo} 
                     disabled={historyIndex === history.length - 1} 
-                    className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center disabled:opacity-5 text-white/40 hover:text-white transition-all active:scale-90"
+                    className="w-[42px] h-[42px] flex items-center justify-center disabled:opacity-5 text-white/40 hover:text-white transition-all active:scale-90"
                   >
-                    <Redo className="w-4 h-4 md:w-5 md:h-5" />
+                    <Redo className="w-6 h-6" />
                   </button>
                 </div>
              </div>
@@ -776,8 +769,8 @@ export default function Editor({ project, onBack }: EditorProps) {
           </div>
        </div>
 
-        {/* BOTTOM HALF: Timeline Area */}
-        <div className="flex-shrink-0 flex flex-col bg-[#050505] border-t border-white/[0.05] z-[100] h-[160px] md:h-[420px]">
+        {/* BOTTOM HALF: Timeline Area (30%) */}
+        <div className="flex-[3] flex flex-col bg-[#050505] border-t border-white/[0.05] z-[100] min-h-[160px]">
            {/* Timeline Toolbar (Time, Split, etc) */}
            <div className="h-10 md:h-12 px-4 border-b border-white/5 flex items-center justify-between bg-[#0a0a0a]">
               <div className="flex items-center gap-6">
@@ -894,50 +887,62 @@ export default function Editor({ project, onBack }: EditorProps) {
             className="fixed inset-0 z-[600] flex flex-col"
           >
             <div className="flex-1 pointer-events-none" onClick={() => setActiveTab('main')} />
-            <div className="h-[52%] md:h-[58%] bg-[#121212] border-t border-white/10 shadow-[0_-20px_60px_rgba(0,0,0,0.9)] flex flex-col rounded-t-[32px] overflow-hidden pointer-events-auto">
-              <div className="flex items-center justify-between px-6 h-14 border-b border-white/5 bg-black/40 backdrop-blur-xl">
-                <button onClick={() => setActiveTab('main')} className="p-2 -ml-2 text-white/40 hover:text-white transition-colors">
-                  <X className="w-5 h-5" />
-                </button>
-                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/90">
-                  {activeTab === 'ratio' ? 'ASPEK RASIO' : 
-                   activeTab === 'text-edit' ? 'UBAH TEKS' : 
-                   activeTab === 'keyframes' ? 'KEYFRAME' : 
-                   activeTab === 'duration' ? 'DURASI' :
-                   activeTab === 'filters-edit' ? 'FILTER' : 
-                   activeTab === 'audio' ? 'AUDIO' :
-                   activeTab === 'audio-edit' || activeTab === 'volume' ? 'VOLUME' : 
-                   activeTab === 'canvas' ? 'KANVAS' :
-                   activeTab === 'speed' ? 'KECEPATAN' :
-                   activeTab === 'speed-curve' ? 'KURVA KECEPATAN' :
-                   activeTab === 'mask' ? 'MASKING' :
-                   activeTab === 'hsl' ? 'WARNA HSL' :
-                   activeTab === 'transform' ? 'DASAR' :
-                   activeTab === 'animation' ? 'ANIMASI' :
-                   activeTab === 'adjust' ? 'SESUAIKAN' :
-                   activeTab === 'blend' ? 'CAMPURAN' :
-                   activeTab === 'stickers' ? 'STIKER' :
-                   activeTab === 'overlay' ? 'OVERLAY' : 
-                   activeTab === 'audio-fade' ? 'LUNTUR' :
-                   activeTab === 'transition' ? 'TRANSISI' :
-                   activeTab === 'chroma' ? 'HAPUS LATAR' : 'PENGATURAN'}
-                </span>
-                <button onClick={() => setActiveTab('main')} className="p-2 text-white">
-                  <ChevronDown className="w-5 h-5" />
-                </button>
-              </div>
+            <div className={cn(
+              "bg-[#121212] border-t border-white/10 shadow-[0_-20px_60px_rgba(0,0,0,0.9)] flex flex-col rounded-t-[32px] overflow-hidden pointer-events-auto transition-all duration-300",
+              activeTab === 'transform' ? "h-fit w-[85%] mx-auto max-h-[70%] border-x border-white/5" : "h-[50%] md:h-[58%]"
+            )}>
+              {activeTab !== 'transform' && (
+                <div className="flex items-center justify-between px-6 h-14 border-b border-white/5 bg-black/40 backdrop-blur-xl shrink-0">
+                  <button onClick={() => setActiveTab('main')} className="p-2 -ml-2 text-white/40 hover:text-white transition-colors">
+                    <X className="w-5 h-5" />
+                  </button>
+                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/90">
+                    {activeTab === 'ratio' ? 'ASPEK RASIO' : 
+                    activeTab === 'text-edit' ? 'UBAH TEKS' : 
+                    activeTab === 'keyframes' ? 'KEYFRAME' : 
+                    activeTab === 'duration' ? 'DURASI' :
+                    activeTab === 'filters-edit' ? 'FILTER' : 
+                    activeTab === 'audio' ? 'AUDIO' :
+                    activeTab === 'audio-edit' || activeTab === 'volume' ? 'VOLUME' : 
+                    activeTab === 'canvas' ? 'KANVAS' :
+                    activeTab === 'speed' ? 'KECEPATAN' :
+                    activeTab === 'speed-curve' ? 'KURVA KECEPATAN' :
+                    activeTab === 'mask' ? 'MASKING' :
+                    activeTab === 'hsl' ? 'WARNA HSL' :
+                    activeTab === 'animation' ? 'ANIMASI' :
+                    activeTab === 'adjust' ? 'SESUAIKAN' :
+                    activeTab === 'blend' ? 'CAMPURAN' :
+                    activeTab === 'stickers' ? 'STIKER' :
+                    activeTab === 'overlay' ? 'OVERLAY' : 
+                    activeTab === 'audio-fade' ? 'LUNTUR' :
+                    activeTab === 'transition' ? 'TRANSISI' :
+                    activeTab === 'chroma' ? 'HAPUS LATAR' : 'PENGATURAN'}
+                  </span>
+                  <button onClick={() => setActiveTab('main')} className="p-2 text-white">
+                    <ChevronDown className="w-5 h-5" />
+                  </button>
+                </div>
+              )}
 
-              <div className="flex-1 overflow-y-auto no-scrollbar p-6 bg-gradient-to-b from-[#080808] to-black">
+              <div className="flex-1 overflow-y-auto no-scrollbar p-[14px] bg-gradient-to-b from-[#080808] to-black">
                 {activeTab === 'transform' && selectedClipId && (
                   <div className="flex flex-col h-full">
+                    {/* Transform Header */}
+                    <div className="flex items-center justify-between mb-4 px-2">
+                       <span className="text-[13px] font-black uppercase tracking-widest text-[#00c2cb]">Dasar</span>
+                       <button onClick={() => setActiveTab('main')} className="text-white/20 hover:text-white">
+                         <X className="w-4 h-4" />
+                       </button>
+                    </div>
+
                     {/* Transform Tabs */}
-                    <div className="flex items-center gap-8 mb-10 px-2">
+                    <div className="flex items-center gap-8 mb-4 px-4 h-10 shrink-0">
                       {(['posisi', 'zoom', 'putar'] as const).map((tab) => (
                         <button
                           key={tab}
                           onClick={() => setTransformTab(tab)}
                           className={cn(
-                            "text-[11px] font-black uppercase tracking-[0.2em] transition-all relative pb-2 flex-shrink-0",
+                            "text-[12px] font-black uppercase tracking-[0.2em] transition-all relative pb-2 flex-shrink-0",
                             transformTab === tab ? "text-white" : "text-white/30 hover:text-white/60"
                           )}
                         >
@@ -945,7 +950,7 @@ export default function Editor({ project, onBack }: EditorProps) {
                           {transformTab === tab && (
                             <motion.div 
                               layoutId="transformTabUnderline"
-                              className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#00c2cb] rounded-full shadow-[0_0_10px_#00c2cb]"
+                              className="absolute bottom-0 left-0 right-0 h-[2px] bg-[#00c2cb] rounded-full"
                             />
                           )}
                         </button>
@@ -953,14 +958,14 @@ export default function Editor({ project, onBack }: EditorProps) {
                     </div>
 
                     {/* Transform Content */}
-                    <div className="flex-1 flex flex-col justify-center gap-16 pb-20">
+                    <div className="flex-1 flex flex-col justify-start gap-2">
                       {transformTab === 'posisi' && (
-                        <div className="flex flex-col gap-10">
+                        <div className="flex flex-col gap-2">
                           <DialSlider 
                             label="Sumbu X"
                             min={-500}
                             max={500}
-                            value={clips.find(c => c.id === selectedClipId)?.x || 0}
+                             value={clips.find(c => c.id === selectedClipId)?.x || 0}
                             onChange={(val) => handleUpdateClip(selectedClipId, { x: Math.round(val) })}
                           />
                           <DialSlider 
@@ -970,19 +975,19 @@ export default function Editor({ project, onBack }: EditorProps) {
                             value={clips.find(c => c.id === selectedClipId)?.y || 0}
                             onChange={(val) => handleUpdateClip(selectedClipId, { y: Math.round(val) })}
                           />
-                          <div className="flex gap-4 px-4">
+                          <div className="flex gap-2 px-6 mt-2">
                              <button 
                               onClick={() => {
                                 const clip = clips.find(c => c.id === selectedClipId);
                                 handleUpdateClip(selectedClipId, { horizontalFlip: !clip?.horizontalFlip });
                               }}
                               className={cn(
-                                "flex-1 h-12 border rounded-xl flex items-center justify-center gap-2 transition-all",
+                                "flex-1 h-10 border rounded-xl flex items-center justify-center gap-2 transition-all",
                                 clips.find(c => c.id === selectedClipId)?.horizontalFlip ? "bg-white border-white text-black" : "bg-white/5 border-white/10 text-white/40 group-hover:text-white"
                               )}
                              >
-                               <FlipHorizontal className="w-4 h-4" />
-                               <span className="text-[10px] font-black uppercase tracking-widest">Cermin H</span>
+                               <FlipHorizontal className="w-6 h-6" />
+                               <span className="text-[11px] font-black uppercase tracking-widest">Cermin H</span>
                              </button>
                              <button 
                               onClick={() => {
@@ -990,18 +995,18 @@ export default function Editor({ project, onBack }: EditorProps) {
                                 handleUpdateClip(selectedClipId, { verticalFlip: !clip?.verticalFlip });
                               }}
                               className={cn(
-                                "flex-1 h-12 border rounded-xl flex items-center justify-center gap-2 transition-all",
+                                "flex-1 h-10 border rounded-xl flex items-center justify-center gap-2 transition-all",
                                 clips.find(c => c.id === selectedClipId)?.verticalFlip ? "bg-white border-white text-black" : "bg-white/5 border-white/10 text-white/40 group-hover:text-white"
                               )}
                              >
-                               <FlipVertical className="w-4 h-4" />
-                               <span className="text-[10px] font-black uppercase tracking-widest">Cermin V</span>
+                               <FlipVertical className="w-6 h-6" />
+                               <span className="text-[11px] font-black uppercase tracking-widest">Cermin V</span>
                              </button>
                           </div>
                         </div>
                       )}
                       {transformTab === 'zoom' && (
-                        <div className="flex flex-col gap-10">
+                        <div className="flex flex-col gap-2">
                           <DialSlider 
                             label="Skala"
                             min={10}
@@ -1010,10 +1015,10 @@ export default function Editor({ project, onBack }: EditorProps) {
                             value={(clips.find(c => c.id === selectedClipId)?.scale || 1) * 100}
                             onChange={(val) => handleUpdateClip(selectedClipId, { scale: val / 100 })}
                           />
-                          <div className="px-4">
+                          <div className="px-6 mt-2">
                             <button 
                               onClick={() => handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0 })}
-                              className="w-full h-12 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/60"
+                              className="w-full h-[40px] bg-white/5 border border-white/10 rounded-lg text-[11px] font-black uppercase tracking-widest text-white/60"
                             >
                               Pas Kanvas
                             </button>
@@ -1021,7 +1026,7 @@ export default function Editor({ project, onBack }: EditorProps) {
                         </div>
                       )}
                       {transformTab === 'putar' && (
-                        <div className="flex flex-col gap-10">
+                        <div className="flex flex-col gap-2">
                           <DialSlider 
                             label="Rotasi"
                             min={-180}
@@ -1030,45 +1035,45 @@ export default function Editor({ project, onBack }: EditorProps) {
                             value={clips.find(c => c.id === selectedClipId)?.rotation || 0}
                             onChange={(val) => handleUpdateClip(selectedClipId, { rotation: Math.round(val) })}
                           />
-                          <div className="px-4">
+                          <div className="px-6 mt-2">
                             <button 
                               onClick={() => {
                                 const clip = clips.find(c => c.id === selectedClipId);
                                 handleUpdateClip(selectedClipId, { rotation: ((clip?.rotation || 0) + 90) % 360 });
                               }}
-                              className="w-full h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-white/60"
+                              className="w-full h-[40px] bg-white/5 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-white/60"
                             >
-                              <RotateCw className="w-4 h-4" />
-                              <span className="text-[10px] font-black uppercase tracking-widest">Putar 90°</span>
+                              <RotateCw className="w-[24px] h-[24px]" />
+                              <span className="text-[11px] font-black uppercase tracking-widest">Putar 90°</span>
                             </button>
                           </div>
                         </div>
                       )}
                     </div>
 
-                    {/* Bottom Actions */}
-                    <div className="mt-auto px-6 pb-10 border-t border-white/5 pt-8 flex items-center justify-between bg-black/20">
+                    {/* Bottom Actions (Buttons 40x40dp) */}
+                    <div className="mt-auto px-6 h-16 shrink-0 border-t border-white/5 flex items-center justify-between bg-black/40">
                        <button 
                          onClick={() => {
                            handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0, rotation: 0, horizontalFlip: false, verticalFlip: false });
                            pushToHistory(clipsRef.current);
                          }}
-                         className="flex items-center gap-2.5 px-5 py-2.5 rounded-full hover:bg-white/5 active:bg-white/10 transition-all group"
+                         className="flex items-center gap-2 px-3 py-1.5 rounded-full hover:bg-white/5 active:bg-white/10 transition-all group"
                        >
-                         <RotateCcw className="w-4 h-4 text-white/40 group-hover:text-white group-active:rotate-[-45deg] transition-all" />
+                         <RotateCcw className="w-4 h-4 text-white/40 group-hover:text-white" />
                          <span className="text-[11px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">Reset</span>
                        </button>
                        
-                       <div className="flex flex-col items-center gap-1 opacity-80">
+                       <div className="flex flex-col items-center gap-0.5">
                          <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white select-none">Dasar</span>
-                         <div className="w-1 h-1 rounded-full bg-[#00c2cb] shadow-[0_0_5px_#00c2cb]" />
+                         <div className="w-1 h-1 rounded-full bg-[#00c2cb]" />
                        </div>
                        
                        <button 
                          onClick={() => setActiveTab('main')}
-                         className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.15)] active:scale-75 hover:scale-105 transition-all"
+                         className="w-[40px] h-[40px] bg-white rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all"
                        >
-                         <Check className="w-7 h-7 text-black stroke-[3.5]" />
+                         <Check className="w-6 h-6 text-black stroke-[3]" />
                        </button>
                     </div>
                   </div>
@@ -1250,28 +1255,6 @@ export default function Editor({ project, onBack }: EditorProps) {
                         </div>
                      </div>
                   </div>
-                )}
-                {activeTab === 'transform' && selectedClipId && (
-                   <div className="space-y-8 py-4">
-                      <div className="space-y-4">
-                         <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/30">
-                            <span>Skala</span>
-                            <span className="text-white">{Math.round((selectedClip?.scale || 1) * 100)}%</span>
-                         </div>
-                         <input 
-                           type="range" min="0.1" max="5" step="0.01"
-                           value={selectedClip?.scale || 1}
-                           onChange={(e) => handleUpdateClip(selectedClipId, { scale: parseFloat(e.target.value) })}
-                           className="w-full accent-white"
-                         />
-                      </div>
-                      <div className="flex justify-between">
-                         <button onClick={() => handleUpdateClip(selectedClipId, { horizontalFlip: !selectedClip?.horizontalFlip })} className="p-4 bg-white/5 rounded-xl"><FlipHorizontal className="w-5 h-5" /></button>
-                         <button onClick={() => handleUpdateClip(selectedClipId, { verticalFlip: !selectedClip?.verticalFlip })} className="p-4 bg-white/5 rounded-xl"><FlipVertical className="w-5 h-5" /></button>
-                         <button onClick={() => handleUpdateClip(selectedClipId, { rotation: (selectedClip?.rotation || 0) + 90 })} className="p-4 bg-white/5 rounded-xl"><RotateCw className="w-5 h-5" /></button>
-                         <button onClick={() => handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0, rotation: 0 })} className="px-6 bg-white text-black font-black uppercase text-[10px] rounded-xl">Reset</button>
-                      </div>
-                   </div>
                 )}
                 {activeTab === 'animation' && selectedClipId && (
                    <div className="space-y-8 py-4">
