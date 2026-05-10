@@ -1,6 +1,6 @@
 {
-  "name": "CapStream - Mobile Editor",
-  "description": "A professional mobile-first video editing application with timeline, overlays, and advanced editing tools.",
+  "name": "LanAnonymous Editor",
+  "description": "Professional mobile-first video editor by LanAnonymous with timeline, keyframe animations, and advanced effects.",
   "requestFramePermissions": [
     "camera",
     "microphone"

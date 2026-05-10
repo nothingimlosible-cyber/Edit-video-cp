@@ -40,7 +40,7 @@ export default function App() {
       newClips.push(
         {
           id: 'default-1',
-          type: 'video',
+          type: 'photo',
           src: 'https://images.unsplash.com/photo-1611162617474-5b21e879e113?q=80&w=600&auto=format&fit=crop',
           start: 0,
           duration: 3,
@@ -55,7 +55,7 @@ export default function App() {
         },
         {
           id: 'default-2',
-          type: 'video',
+          type: 'photo',
           src: 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?q=80&w=600&auto=format&fit=crop',
           start: 3,
           duration: 3,

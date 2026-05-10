@@ -1,8 +1,8 @@
 import React, { useRef, useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Clip } from '../../types/editor';
-import { cn } from '../../lib/utils';
-import { Plus, Volume2, Scissors, Type, Play, Music, Maximize2, Diamond } from 'lucide-react';
+import { cn, formatTime } from '../../lib/utils';
+import { Plus, Volume2, Scissors, Type, Play, Music, Maximize2, Diamond, Layers, Lock, Eye, EyeOff, Image as ImageIcon, Trash2 } from 'lucide-react';
 
 interface TimelineProps {
   clips: Clip[];
@@ -12,6 +12,7 @@ interface TimelineProps {
   selectedClipId: string | null;
   onClipSelect: (id: string | null) => void;
   onAddMedia: () => void;
+  onAddAudio: () => void;
   onAddText: () => void;
   onSplit: () => void;
   onUpdateClip: (id: string, updates: Partial<Clip>) => void;
@@ -32,6 +33,7 @@ export default function Timeline({
   selectedClipId, 
   onClipSelect,
   onAddMedia,
+  onAddAudio,
   onAddText,
   onSplit,
   onUpdateClip,
@@ -99,27 +101,85 @@ export default function Timeline({
     onReorderClips(draggedId, overId);
   };
 
-  // Group clips by layer
-  const layers = Array.from(new Set(clips.map(c => c.layer))).sort((a, b) => b - a); // Higher layers on top
+  // Group clips by layer - Put primary track (0) at top, then overlays (1,2,3), then audio tracks (-1,-2,-3)
+  const layers = Array.from(new Set(clips.map(c => c.layer))).sort((a, b) => {
+    if (a === 0) return -1;
+    if (b === 0) return 1;
+    if (a > 0 && b > 0) return a - b; // Overlays: 1, 2, 3...
+    if (a < 0 && b < 0) return b - a; // Audio: -1, -2, -3...
+    if (a > 0 && b < 0) return -1;   // Overlays above Audio
+    return 1;
+  });
+  const [lockedLayers, setLockedLayers] = useState<Set<number>>(new Set());
+  const [hiddenLayers, setHiddenLayers] = useState<Set<number>>(new Set());
+
+  const toggleLock = (l: number) => {
+    const next = new Set(lockedLayers);
+    if (next.has(l)) next.delete(l); else next.add(l);
+    setLockedLayers(next);
+  };
+
+  const toggleVisibility = (l: number) => {
+    const next = new Set(hiddenLayers);
+    if (next.has(l)) next.delete(l); else next.add(l);
+    setHiddenLayers(next);
+  };
 
   return (
     <div 
-      className="h-full flex flex-col relative"
+      className="h-full flex relative overflow-hidden bg-[#0a0a0a]"
       onTouchStart={() => { if (!draggingClipId) setIsScrolling(true); }}
       onTouchEnd={() => setIsScrolling(false)}
       onMouseDown={() => { if (!draggingClipId) setIsScrolling(true); }}
       onMouseUp={() => setIsScrolling(false)}
     >
-      {/* Playhead - exactly at the center of the container */}
-      <div className="absolute top-0 bottom-0 left-1/2 w-[1px] z-[150] pointer-events-none transition-colors duration-150"
-        style={{ backgroundColor: isSnapped ? '#ffffff' : 'rgba(255, 255, 255, 0.8)' }}
+      {/* Track Sidebar (Legend) - CapCut Android Style */}
+      <div className="w-14 md:w-16 h-full flex flex-col bg-[#121212] border-r border-white/5 z-[210] overflow-hidden">
+         {/* Sidebar Buttons (Mute, AI Clip, Cover) */}
+         <div className="flex flex-col items-center py-1 md:py-1.5 gap-1 md:gap-1.5">
+            <button 
+              onClick={onToggleMute}
+              className={cn(
+                "w-10 h-10 md:w-11 md:h-11 flex flex-col items-center justify-center gap-1 rounded-xl transition-all",
+                isMuted ? "bg-[#00c2cb]/10 text-[#00c2cb]" : "bg-white/5 text-white/40 hover:text-white/60"
+              )}
+            >
+              <Volume2 className={cn("w-2.5 h-2.5 md:w-3 md:h-3", isMuted && "fill-current")} />
+              <span className="text-[5.5px] md:text-[6px] font-black uppercase text-center leading-[1] tracking-tighter">Bisukan<br/>audio</span>
+            </button>
+
+            <button className="w-10 h-10 md:w-11 md:h-11 flex flex-col items-center justify-center gap-1 rounded-xl bg-white/5 text-white/40 hover:text-white/60 transition-all">
+              <Scissors className="w-2.5 h-2.5 md:w-3 md:h-3" />
+              <span className="text-[5.5px] md:text-[6px] font-black uppercase text-center leading-[1] tracking-tighter">Pemotong<br/>klip AI</span>
+            </button>
+
+            <button className="w-10 h-10 md:w-11 md:h-11 flex flex-col items-center justify-center gap-1 rounded-xl bg-white/5 text-white/40 hover:text-white/60 transition-all">
+              <ImageIcon className="w-2.5 h-2.5 md:w-3 md:h-3" />
+              <span className="text-[5.5px] md:text-[6px] font-black uppercase text-center leading-[1] tracking-tighter">Sampul</span>
+            </button>
+         </div>
+
+         {/* Track Status Indicators (Lock/Eye) */}
+         <div className="flex-1 flex flex-col pt-0 opacity-20 pointer-events-none">
+            {layers.filter(l => l !== 0).map(layer => (
+              <div key={layer} className="h-10 border-b border-white/[0.02]" />
+            ))}
+         </div>
+      </div>
+
+      <div className="flex-1 relative flex flex-col overflow-hidden">
+        {/* Playhead - exactly at the center of the container (GLOWING) */}
+      <div className="absolute top-0 bottom-0 left-1/2 w-[2px] z-[150] pointer-events-none"
+        style={{ backgroundColor: isSnapped ? '#ffffff' : 'rgba(255, 255, 255, 0.9)' }}
       >
-        {/* Glow effect when snapped */}
-        {isSnapped && (
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 w-4 h-full bg-white/10 blur-sm" />
-        )}
-        {/* Main white line */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[1.5px] h-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)]" />
+        {/* Glow effect */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-full bg-white/20 blur-[6px]" />
+        
+        {/* Main white line with secondary glow */}
+        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]" />
+        
+        {/* Playhead Head (Rounded) */}
+        <div className="absolute -top-1 -left-1 w-3 h-3 bg-white rounded-full shadow-lg border border-white/20" />
       </div>
 
       {/* Zoom Controls */}
@@ -150,35 +210,35 @@ export default function Timeline({
               className="absolute top-0 bottom-0 w-[2px] bg-white/30 z-[60]"
               style={{ left: `${duration * pixelsPerSecond}px` }}
             />
-            {/* Time Rulers - CapCut Style dots and lines */}
-            <div className="absolute top-0 left-0 right-0 h-10 flex items-end pointer-events-none border-b border-white/5 bg-black/20">
+            {/* Time Rulers - CapCut Style High Contrast */}
+            <div className="absolute top-0 left-0 right-0 h-8 md:h-10 flex items-end pointer-events-none border-b border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent">
               {Array.from({ length: Math.ceil(duration) + 1 }).map((_, i) => (
                 <div 
                   key={i} 
                   className="absolute flex flex-col items-center" 
                   style={{ left: `${i * pixelsPerSecond}px` }}
                 >
-                  <div className="w-[1.5px] h-2 bg-white/20" />
-                  
-                  {/* Fine Ruler Ticks */}
-                  {Array.from({ length: 4 }).map((_, j) => (
-                     <div 
-                      key={j} 
-                      className="absolute w-[1px] h-1 bg-white/10"
-                      style={{ left: `${(j + 1) * (pixelsPerSecond / 5)}px`, bottom: 0 }} 
-                    />
-                  ))}
+                  <div className="w-[1px] md:w-[1.5px] h-2 md:h-3 bg-white/30" />
+                  <span className="absolute bottom-1.5 md:bottom-2 text-[7px] md:text-[8px] font-black font-mono text-white/40 tracking-tighter translate-y-6">
+                    {formatTime(i)}
+                  </span>
                 </div>
               ))}
             </div>
 
-          <div className="flex-1 flex flex-col py-2 gap-1 min-h-0">
-            {/* Render all layers */}
-            {layers.map(layer => (
-              <div key={layer} className={cn(
-                "relative flex items-center bg-white/[0.01] border-y border-white/5",
-                layer === 0 ? "h-10 bg-white/[0.03]" : "h-8"
-              )}>
+          <div className="flex-1 flex flex-col py-1 md:py-2 gap-0.5 md:gap-1 min-h-0">
+              {/* Render all layers with better visual separation */}
+              {layers.map(layer => (
+                <div key={layer} className={cn(
+                  "relative flex items-center border-y border-white/[0.02] transition-colors",
+                  layer === 0 ? "h-10 md:h-12 bg-white/[0.04]" : "h-8 md:h-10 bg-white/[0.01]",
+                  lockedLayers.has(layer) && "pointer-events-none select-none",
+                  hiddenLayers.has(layer) && "opacity-20 saturate-0"
+                )}>
+                  {/* Track ID / Indicator like CapCut */}
+                  <div className="absolute left-[-40px] w-8 h-full flex items-center justify-center opacity-20 pointer-events-none">
+                    {layer === 0 ? <Scissors className="w-3 h-3" /> : <Layers className="w-3 h-3" />}
+                  </div>
                 {/* Track label for overlays */}
                 {layer !== 0 && (
                   <div className="absolute left-0 top-0 bottom-0 px-2 flex items-center z-10">
@@ -235,8 +295,41 @@ export default function Timeline({
                     </React.Fragment>
                   );
                 })}
+                {layer === 0 && (
+                  <button 
+                    onClick={onAddMedia}
+                    className="flex-shrink-0 w-12 h-8 bg-white/5 border border-white/10 rounded-md flex items-center justify-center hover:bg-white/10 transition-all ml-1 group"
+                  >
+                    <Plus className="w-4 h-4 text-white/40 group-hover:text-white" />
+                  </button>
+                )}
               </div>
-            ))}
+              ))}
+
+              {/* Add Audio Placeholder - only if no audio clips yet or always? CapCut usually has it. */}
+              {!clips.some(c => c.type === 'audio') && (
+                <div 
+                  className="relative h-10 border-y border-white/[0.02] bg-white/[0.01] flex items-center cursor-pointer hover:bg-white/[0.03] group transition-colors overflow-hidden"
+                  onClick={onAddAudio}
+                >
+                   <div className="absolute inset-0 flex items-center px-4 gap-3">
+                      <Plus className="w-3 h-3 text-white/30 group-hover:text-white" />
+                      <span className="text-[9px] font-bold text-white/20 group-hover:text-white/40 uppercase tracking-tighter">Tambahkan audio</span>
+                   </div>
+                </div>
+              )}
+              {/* Add Text Placeholder - only if no text clips yet? Actually CapCut has it as a separate track often. */}
+              {!clips.some(c => c.type === 'text') && (
+                <div 
+                  className="relative h-10 border-y border-white/[0.02] bg-white/[0.01] flex items-center cursor-pointer hover:bg-white/[0.03] group transition-colors overflow-hidden"
+                  onClick={onAddText}
+                >
+                   <div className="absolute inset-0 flex items-center px-4 gap-3">
+                      <Plus className="w-3 h-3 text-white/30 group-hover:text-white" />
+                      <span className="text-[9px] font-bold text-white/20 group-hover:text-white/40 uppercase tracking-tighter">Tambahkan teks</span>
+                   </div>
+                </div>
+              )}
           </div>
         </div>
 
@@ -245,6 +338,7 @@ export default function Timeline({
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
@@ -475,7 +569,7 @@ function ClipItem({
       }
       className={cn(
         "absolute cursor-pointer border flex items-center group overflow-hidden",
-        isSmaller ? "h-6 rounded-sm" : "h-8 rounded-md",
+        isSmaller ? "h-5 md:h-6 rounded-sm" : "h-7 md:h-8 rounded-md",
         isSelected 
           ? "border-white ring-[4px] ring-white/20" 
           : "border-white/5 opacity-80 hover:opacity-100",
@@ -488,14 +582,25 @@ function ClipItem({
       {/* Background thumbnails for video/photo */}
       {(clip.type === 'video' || clip.type === 'photo') && (
         <div 
-          className="absolute inset-0 opacity-40 pointer-events-none"
-          style={{
-            backgroundImage: `url(${clip.src})`,
-            backgroundSize: `${isSmaller ? '30px' : '50px'} auto`,
-            backgroundRepeat: 'repeat-x',
-            backgroundPosition: `${-clip.trimStart * pixelsPerSecond}px center`,
-          }}
-        />
+          className="absolute inset-0 opacity-30 pointer-events-none overflow-hidden"
+        >
+          <div 
+            className="h-full flex gap-1"
+            style={{ 
+              width: clip.duration * pixelsPerSecond,
+              marginLeft: -clip.trimStart * pixelsPerSecond 
+            }}
+          >
+            {Array.from({ length: Math.ceil(clip.duration / (isSmaller ? 0.5 : 1)) }).map((_, i) => (
+              <img 
+                key={i}
+                src={clip.thumbnail || clip.src} 
+                className="h-full object-cover rounded-[1px] flex-shrink-0"
+                style={{ width: isSmaller ? 30 : 50 }}
+              />
+            ))}
+          </div>
+        </div>
       )}
 
       {/* Frame Dividers */}

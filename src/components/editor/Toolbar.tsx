@@ -1,4 +1,4 @@
-import { Plus, Scissors, Music, Type, Wand2, Layers, Smile, MessageSquare, Filter, Sliders, ChevronUp, FastForward, Target, Square, Palette, Volume2, Trash2, Maximize2, RotateCw, ChevronLeft, Copy } from 'lucide-react';
+import { Plus, Scissors, Music, Type, Wand2, Layers, Smile, MessageSquare, Filter, Sliders, ChevronUp, FastForward, Target, Square, Palette, Volume2, Trash2, Maximize2, RotateCw, ChevronLeft, Copy, Diamond, Move, Crop } from 'lucide-react';
 import { cn } from '../../lib/utils';
 import { motion } from 'motion/react';
 
@@ -13,39 +13,38 @@ interface ToolbarProps {
   onAddAudio: () => void;
   onAddMedia: () => void;
   onDelete: () => void;
+  onToggleKeyframe?: () => void;
   canSplit: boolean;
   selectedClipType?: string | null;
 }
 
 const TOOL_BARS = {
   main: [
-    { id: 'edit-root', icon: Scissors, label: 'Edit' },
+    { id: 'media', icon: Plus, label: 'Media' },
     { id: 'audio', icon: Music, label: 'Audio' },
     { id: 'text', icon: Type, label: 'Teks' },
-    { id: 'effects', icon: Wand2, label: 'Efek' },
     { id: 'overlay', icon: Layers, label: 'Overlay' },
-    { id: 'captions', icon: MessageSquare, label: 'Keterangan' },
-    { id: 'impor', icon: Plus, label: 'Tambah' },
-    { id: 'ratio', icon: Maximize2, label: 'Aspek' },
-    { id: 'canvas', icon: Square, label: 'Kanvas' },
+    { id: 'effects', icon: Wand2, label: 'Efek' },
+    { id: 'filters', icon: Filter, label: 'Filter' },
     { id: 'adjust-root', icon: Sliders, label: 'Sesuaikan' },
+    { id: 'stickers', icon: Smile, label: 'Stiker' },
+    { id: 'canvas', icon: Square, label: 'Kanvas' },
+    { id: 'ratio', icon: Maximize2, label: 'Rasio' },
   ],
   edit: [
-    { id: 'back', icon: ChevronLeft, label: 'Menu', action: 'back' },
+    { id: 'back', icon: ChevronLeft, label: 'Kembali', action: 'back' },
     { id: 'split', icon: Scissors, label: 'Bagi', action: 'split' },
+    { id: 'transform', icon: Crop, label: 'Dasar' },
+    { id: 'keyframe', icon: Diamond, label: 'Keyframe', action: 'keyframe' },
     { id: 'speed', icon: FastForward, label: 'Kecepatan' },
     { id: 'animation', icon: Wand2, label: 'Animasi' },
     { id: 'blend', icon: Layers, label: 'Campuran' },
-    { id: 'effects', icon: Wand2, label: 'Efek' },
-    { id: 'transition', icon: Layers, label: 'Transisi' },
-    { id: 'transform', icon: RotateCw, label: 'Transform' },
+    { id: 'mask', icon: Target, label: 'Masking' },
     { id: 'chroma', icon: Wand2, label: 'Hapus Latar' },
     { id: 'filters', icon: Filter, label: 'Filter' },
     { id: 'adjust', icon: Sliders, label: 'Sesuaikan' },
     { id: 'volume', icon: Volume2, label: 'Volume' },
     { id: 'audio-fade', icon: Music, label: 'Luntur' },
-    { id: 'duration', icon: Scissors, label: 'Durasi' },
-    { id: 'keyframes', icon: Target, label: 'Keyframe' },
     { id: 'copy', icon: Copy, label: 'Salin', action: 'copy' },
     { id: 'delete', icon: Trash2, label: 'Hapus', action: 'delete' },
   ]
@@ -62,6 +61,7 @@ export default function Toolbar({
   onAddAudio,
   onAddMedia,
   onDelete,
+  onToggleKeyframe,
   canSplit,
   selectedClipType
 }: ToolbarProps) {
@@ -88,18 +88,19 @@ export default function Toolbar({
             key={tool.id}
             whileTap={{ scale: 0.9 }}
             className={cn(
-              "flex-shrink-0 w-[78px] h-full flex flex-col items-center justify-center gap-1.5 transition-all snap-center",
+              "flex-shrink-0 w-[64px] h-full flex flex-col items-center justify-center gap-1 transition-all snap-center",
               activeTab === tool.id ? "text-white" : "text-[#999] hover:text-white"
             )}
             onClick={() => {
               if (tool.id === 'back') onTabChange('main');
               else if (tool.id === 'split') onSplit();
+              else if (tool.id === 'keyframe') onToggleKeyframe?.();
               else if (tool.id === 'copy') onCopy();
               else if (tool.id === 'delete') onDelete();
-              else if (tool.id === 'impor') onAddMedia();
+              else if (tool.id === 'media' && !isEditMode) onAddMedia();
               else if (tool.id === 'text' && !isEditMode) onAddText();
               else if (tool.id === 'overlay' && !isEditMode) onAddOverlay();
-              else if (tool.id === 'audio' && !isEditMode) onAddAudio();
+              else if (tool.id === 'audio' && !isEditMode) onTabChange('audio');
               else if (tool.id === 'edit-root') {
                 onTabChange('edit');
               }
@@ -107,12 +108,15 @@ export default function Toolbar({
             }}
           >
             <div className={cn(
-              "p-1.5 rounded-lg transition-transform",
-              activeTab === tool.id ? "scale-110" : ""
+              "p-2 rounded-xl transition-all duration-300",
+              activeTab === tool.id ? "bg-white/10 scale-110 shadow-[0_0_20px_rgba(255,255,255,0.05)]" : ""
             )}>
-              <tool.icon className={cn("w-6 h-6 stroke-[2.2]", activeTab === tool.id && "text-white")} />
+              <tool.icon className={cn("w-5 h-5 stroke-[2]", activeTab === tool.id ? "text-white" : "text-white/80")} />
             </div>
-            <span className="text-[10px] font-black uppercase tracking-tight leading-none whitespace-nowrap">{tool.label}</span>
+            <span className={cn(
+              "text-[9px] font-bold tracking-tight whitespace-nowrap",
+              activeTab === tool.id ? "text-white font-bold" : "text-white/60"
+            )}>{tool.label}</span>
           </motion.button>
         ))}
       </div>

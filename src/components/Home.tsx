@@ -183,6 +183,12 @@ export default function Home({ onCreateProject, onOpenProject, onOpenPhotoEditor
         </div>
       </div>
 
+      {/* Copyright Notice */}
+      <div className="mt-12 mb-8 flex flex-col items-center justify-center opacity-20">
+        <span className="text-[10px] font-black tracking-[0.3em] uppercase">©LanAnonymous</span>
+        <div className="w-12 h-[1px] bg-white mt-4" />
+      </div>
+
       {/* Bottom Nav - Better spacing for mobile bars */}
       <nav className="fixed bottom-0 inset-x-0 bg-black/80 backdrop-blur-xl border-t border-white/5 h-[calc(80px+env(safe-area-inset-bottom))] px-8 flex justify-between items-center z-[100] pb-[calc(16px+env(safe-area-inset-bottom))]">
         {[

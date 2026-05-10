@@ -57,6 +57,14 @@ export interface Clip {
   fadeInDuration?: number;
   fadeOutDuration?: number;
   backgroundMode?: 'black' | 'blur' | 'color';
+  speedCurve?: 'none' | 'montage' | 'hero' | 'bullet' | 'flash-in' | 'flash-out';
+  hsl?: {
+    [key in 'red' | 'orange' | 'yellow' | 'green' | 'cyan' | 'blue' | 'purple' | 'magenta']?: {
+      h: number;
+      s: number;
+      l: number;
+    }
+  };
 }
 
 export type AspectRatio = '9:16' | '16:9' | '1:1' | '4:5' | '2.35:1' | '2:1' | '3:4' | 'original';

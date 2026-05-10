@@ -59,11 +59,17 @@ function VideoClip({ clip, currentTime, isPlaying, isMuted, interpolatedProps }:
   const sharpen = (interpolatedProps.sharpen ?? 0) / 100;
   const vignette = (interpolatedProps.vignette ?? 0) / 100;
 
+  const clipPath = clip.maskType === 'circle' ? 'circle(50% at 50% 50%)' :
+                 clip.maskType === 'rectangle' ? 'inset(10% 10% 10% 10%)' :
+                 clip.maskType === 'linear' ? 'inset(0% 0% 50% 0%)' : 'none';
+
   return (
-    <div className="relative w-full h-full">
+    <div className="relative w-full h-full" style={{ clipPath }}>
       <video 
         ref={videoRef}
+        key={clip.src}
         src={clip.src} 
+        preload="auto"
         className={cn(
           "relative z-10 w-full h-full object-contain pointer-events-none",
           clip.filter === 'grayscale' && "grayscale",
@@ -101,6 +107,7 @@ interface PreviewProps {
   aspectRatio: AspectRatio;
   isPlaying?: boolean;
   isMuted?: boolean;
+  isTransforming?: boolean;
   onTogglePlay?: () => void;
   onUpdateClip?: (id: string, updates: Partial<Clip>) => void;
   onUpdateEnd?: () => void;
@@ -113,6 +120,7 @@ export default function Preview({
   aspectRatio, 
   isPlaying, 
   isMuted,
+  isTransforming,
   onTogglePlay, 
   onUpdateClip,
   onUpdateEnd
@@ -126,15 +134,15 @@ export default function Preview({
 
   const getAspectRatioClasses = () => {
     switch (aspectRatio) {
-      case '16:9': return 'aspect-video w-full h-auto';
-      case '1:1': return 'aspect-square w-full h-auto';
-      case '4:5': return 'aspect-[4/5] h-full w-auto';
-      case '2.35:1': return 'aspect-[2.35/1] w-full h-auto';
-      case '2:1': return 'aspect-[2/1] w-full h-auto';
-      case '3:4': return 'aspect-[3/4] h-full w-auto';
-      case 'original': return 'w-full h-full';
+      case '16:9': return 'aspect-video w-full max-w-full h-auto max-h-full';
+      case '1:1': return 'aspect-square h-full max-h-full w-auto max-w-full';
+      case '4:5': return 'aspect-[4/5] h-full max-h-full w-auto max-w-full';
+      case '2.35:1': return 'aspect-[2.35/1] w-full max-w-full h-auto max-h-full';
+      case '2:1': return 'aspect-[2/1] w-full max-w-full h-auto max-h-full';
+      case '3:4': return 'aspect-[3/4] h-full max-h-full w-auto max-w-full';
+      case 'original': return 'w-full h-full max-w-full max-h-full';
       case '9:16':
-      default: return 'aspect-[9/16] h-full w-auto';
+      default: return 'aspect-[9/16] h-full max-h-full w-auto max-w-full';
     }
   };
 
@@ -174,11 +182,27 @@ export default function Preview({
   return (
     <div 
       className={cn(
-        "relative bg-black shadow-2xl rounded-sm overflow-hidden flex items-center justify-center transition-all duration-500 cursor-pointer",
+        "relative bg-black shadow-2xl rounded-sm overflow-hidden flex items-center justify-center transition-all duration-300 cursor-pointer border border-white/20",
         getAspectRatioClasses()
       )}
       onClick={onTogglePlay}
     >
+      {/* Aspect Ratio Grid Guide */}
+      <div className={cn(
+        "absolute inset-0 z-[1] pointer-events-none transition-opacity duration-300",
+        isTransforming ? "opacity-60" : "opacity-10"
+      )}>
+        <div className="absolute inset-0 flex">
+          <div className="flex-1 border-r border-white/30" />
+          <div className="flex-1 border-r border-white/30" />
+          <div className="flex-1" />
+        </div>
+        <div className="absolute inset-0 flex flex-col">
+          <div className="flex-1 border-b border-white/30" />
+          <div className="flex-1 border-b border-white/30" />
+          <div className="flex-1" />
+        </div>
+      </div>
       <AnimatePresence mode="popLayout">
         {visibleClips.length > 0 ? (
           visibleClips.map((clip) => {
@@ -345,7 +369,7 @@ export default function Preview({
                           interpolatedProps={props}
                         />
                       ) : (
-                        <div className="relative w-full h-full">
+                        <div className="relative w-full h-full" style={{ clipPath: clip.maskType === 'circle' ? 'circle(50% at 50% 50%)' : clip.maskType === 'rectangle' ? 'inset(10% 10% 10% 10%)' : clip.maskType === 'linear' ? 'inset(0% 0% 50% 0%)' : 'none' }}>
                           <img 
                             src={clip.src} 
                             alt="Clip content" 

@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { X, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Target, Play, Pause, Undo, Redo, RotateCcw, RotateCw, Maximize2, Scissors, Music, Type, Plus, Wand2, Layers, Smile, MessageSquare, Filter, Sliders, Settings, Volume2, FastForward, Diamond, Droplets, Sun, Contrast, Zap, FlipHorizontal, FlipVertical, Copy, Circle, Search, CornerUpLeft, CornerUpRight, Image } from 'lucide-react';
+import { X, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Target, Play, Pause, Undo, Redo, RotateCcw, RotateCw, Maximize2, Scissors, Music, Type, Plus, Wand2, Layers, Smile, MessageSquare, Filter, Sliders, Settings, Volume2, FastForward, Diamond, Droplets, Sun, Contrast, Zap, FlipHorizontal, FlipVertical, Copy, Circle, Search, CornerUpLeft, CornerUpRight, Image as ImageIcon, Monitor, Square, MousePointer2, Type as TypeIcon, Palette, Ghost, Minus, TrendingUp, Upload, Trash2, Check, Crop, Mic, HardDrive, Headphones, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Project, Clip, Keyframe } from '../types/editor';
 import { cn, formatTime } from '../lib/utils';
@@ -13,6 +13,87 @@ interface EditorProps {
   project: Project;
   onBack: () => void;
 }
+
+// --- Helper Components ---
+const DialSlider = ({ 
+  value, 
+  onChange, 
+  min, 
+  max, 
+  step = 1, 
+  unit = '', 
+  label = '' 
+}: { 
+  value: number; 
+  onChange: (val: number) => void; 
+  min: number; 
+  max: number; 
+  step?: number; 
+  unit?: string; 
+  label?: string 
+}) => {
+  return (
+    <div className="flex flex-col gap-6 w-full items-center px-4">
+      <div className="flex flex-col items-center gap-1.5">
+         <span className="text-[10px] font-black tracking-[0.25em] text-white/20 uppercase select-none">{label}</span>
+         <div className="flex items-end gap-1">
+            <span className="text-2xl font-mono text-white tabular-nums select-none leading-none">
+              {unit === '%' ? Math.round(value) : value.toFixed(unit === '°' ? 0 : 0)}
+            </span>
+            {unit && <span className="text-[10px] font-black text-[#00c2cb] mb-1 select-none">{unit}</span>}
+         </div>
+      </div>
+      
+      <div className="relative w-full h-[88px] flex items-center justify-center bg-white/[0.03] rounded-3xl border border-white/[0.05] overflow-hidden group/dial">
+         {/* Dial Markers */}
+         <div className="absolute inset-x-0 h-full flex items-center justify-center pointer-events-none">
+           <div 
+              className="flex items-center gap-[5px] transition-transform duration-150 ease-out" 
+              style={{ transform: `translateX(${-(value - (min + max) / 2) * (1000 / (max - min || 1))}px)` }}
+           >
+             {Array.from({ length: 241 }).map((_, i) => {
+               const index = i - 120;
+               const isMain = index % 10 === 0;
+               const isMid = index % 5 === 0;
+               return (
+                 <div 
+                   key={i} 
+                   className={cn(
+                     "w-[1.5px] rounded-full transition-all duration-300",
+                     index === 0 ? "h-10 bg-[#00c2cb] shadow-[0_0_10px_#00c2cb]" : 
+                     isMain ? "h-7 bg-white/40" : 
+                     isMid ? "h-4 bg-white/15" : "h-2 bg-white/5"
+                   )}
+                 />
+               );
+             })}
+           </div>
+         </div>
+         
+         {/* Center Indicator */}
+         <div className="absolute top-0 bottom-0 w-[2px] bg-[#00c2cb] shadow-[0_0_20px_#00c2cb] z-20" />
+         
+         {/* Indicator Glow */}
+         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-8 h-8 bg-[#00c2cb]/5 blur-xl pointer-events-none" />
+         
+         {/* Gradient Masks for fade effect at edges */}
+         <div className="absolute inset-y-0 left-0 w-24 bg-gradient-to-r from-[#121212] to-transparent z-10 pointer-events-none" />
+         <div className="absolute inset-y-0 right-0 w-24 bg-gradient-to-l from-[#121212] to-transparent z-10 pointer-events-none" />
+         
+         {/* Interaction Surface */}
+         <input 
+           type="range"
+           min={min}
+           max={max}
+           step={step}
+           value={value}
+           onChange={(e) => onChange(parseFloat(e.target.value))}
+           className="absolute inset-0 w-full h-full opacity-0 cursor-ew-resize z-30"
+         />
+      </div>
+    </div>
+  );
+};
 
 export default function Editor({ project, onBack }: EditorProps) {
   const [currentTime, setCurrentTime] = useState(0);
@@ -66,6 +147,7 @@ export default function Editor({ project, onBack }: EditorProps) {
 
   const [aspectRatio, setAspectRatio] = useState<Project['aspectRatio']>(project.aspectRatio);
   const [activeTab, setActiveTab] = useState<string>('edit');
+  const [transformTab, setTransformTab] = useState<'posisi' | 'zoom' | 'putar'>('posisi');
   const [showSubMenu, setShowSubMenu] = useState(false);
   
   const selectedClip = clips.find(c => c.id === selectedClipId);
@@ -247,12 +329,18 @@ export default function Editor({ project, onBack }: EditorProps) {
 
   const handleAddMedia = () => {
     setUploadType('video');
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = "video/*,image/*";
+      fileInputRef.current.click();
+    }
   };
 
   const handleAddOverlay = () => {
     setUploadType('photo');
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = "image/*";
+      fileInputRef.current.click();
+    }
   };
 
   const handleFileSelect = (e: any) => {
@@ -298,11 +386,20 @@ export default function Editor({ project, onBack }: EditorProps) {
 
     if (type === 'video') {
       const video = document.createElement('video');
+      video.preload = 'metadata';
       video.src = url;
-      video.onloadedmetadata = () => addClipWithDuration(video.duration);
+      video.onloadedmetadata = () => {
+        addClipWithDuration(video.duration);
+        // Ensure duration is strictly synced
+        console.log(`Video detected: ${video.duration}s`);
+      };
+      video.onerror = () => addClipWithDuration(3);
     } else if (type === 'audio') {
       const audio = new Audio(url);
+      audio.preload = 'metadata';
+      audio.src = url;
       audio.onloadedmetadata = () => addClipWithDuration(audio.duration);
+      audio.onerror = () => addClipWithDuration(3);
     } else {
       addClipWithDuration(3);
     }
@@ -359,7 +456,10 @@ export default function Editor({ project, onBack }: EditorProps) {
 
   const handleAddAudio = () => {
     setUploadType('audio');
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.accept = "audio/*";
+      fileInputRef.current.click();
+    }
   };
 
   const handleUpdateClip = (id: string | null, updates: Partial<Clip>) => {
@@ -575,7 +675,7 @@ export default function Editor({ project, onBack }: EditorProps) {
   };
 
   return (
-    <div className="flex flex-col h-screen h-[100dvh] bg-[#050505] overflow-hidden" ref={editorRef}>
+    <div className="flex flex-col h-screen h-[100dvh] bg-[#050505] text-white overflow-hidden select-none" ref={editorRef}>
       <input 
         type="file" 
         ref={fileInputRef} 
@@ -583,410 +683,182 @@ export default function Editor({ project, onBack }: EditorProps) {
         accept={uploadType === 'audio' ? "audio/*" : uploadType === 'photo' ? "image/*" : "video/*,image/*"}
         onChange={handleFileSelect}
       />
-      {/* Header - CapCut Precision */}
-      <header className="flex-shrink-0 h-14 px-4 flex items-center justify-between border-b border-[#111] bg-black z-[200]">
-        <div className="flex items-center gap-5">
-          <button onClick={onBack} className="p-1 text-white active:scale-90 transition-transform">
-            <X className="w-6 h-6 stroke-[2.5]" />
-          </button>
-          {/* Desktop Search */}
-          <div className="hidden md:flex items-center bg-[#1a1a1a] rounded-lg border border-white/5 px-3 py-1.5 w-64">
-            <Search className="w-4 h-4 text-white/40 mr-2" />
-            <input 
-              type="text" 
-              placeholder="Cari fitur atau efek..." 
-              className="bg-transparent border-none text-[11px] text-white placeholder:text-white/20 outline-none w-full"
-            />
-          </div>
-          {/* Mobile Search */}
-          <button className="md:hidden p-1 text-white/90 active:scale-90 transition-transform">
-            <Search className="w-5 h-5" />
+      
+      {/* 1. TOP BAR (CapCut Android Style) */}
+      <header className="flex-shrink-0 h-10 bg-black border-b border-white/10 flex items-center justify-between px-4 z-[300]">
+        <div className="flex items-center gap-4">
+          <button onClick={onBack} className="p-1.5 text-white active:scale-90 transition-all">
+            <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="hidden md:flex flex-col items-center">
-          <span className="text-[10px] font-black text-white/20 tracking-[0.5em] uppercase">Project</span>
-          <span className="text-xs font-black text-white px-4 py-1 hover:bg-white/5 rounded transition-colors cursor-pointer">{project.name || 'VIDEO TANPA JUDUL'}</span>
-        </div>
-
-        <div className="flex items-center gap-3">
-           <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#1a1a1a] rounded-lg border border-white/5 active:scale-95 transition-all">
-             <Diamond className="w-3.5 h-3.5 text-[#42f2f2] fill-[#42f2f2]" />
-             <span className="text-[10px] font-black text-white italic tracking-wider">UHD AI</span>
-             <ChevronDown className="w-3.5 h-3.5 text-white/40" />
-           </button>
-           <button 
+        <div className="flex items-center gap-4">
+          <button className="flex items-center gap-1.5 px-3 py-1 bg-white/5 border border-white/10 rounded-full active:scale-95 transition-all">
+            <span className="text-[10px] font-bold text-white/90 uppercase tracking-tight">1080P</span>
+            <ChevronDown className="w-3 h-3 text-white/40" />
+          </button>
+          <button 
             onClick={() => setShowExportDrawer(true)}
-            className="bg-[#00c2cb] hover:bg-[#00dae4] text-white px-5 py-1.5 rounded-lg text-[11px] font-black uppercase tracking-widest transition-all active:scale-95 shadow-[0_0_15px_rgba(0,194,203,0.3)]"
+            className="p-1.5 text-white active:scale-90 transition-all"
           >
-            Ekspor
+             <Upload className="w-5 h-5 text-white/80" />
           </button>
         </div>
       </header>
 
-      {/* Export Overlay */}
-      <AnimatePresence>
-        {showExportDrawer && (
-          <motion.div 
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-3xl flex items-center justify-center p-6"
-          >
-            <div className="w-full max-w-md bg-[#050505] border border-white/10 rounded-3xl p-8 flex flex-col gap-8 shadow-2xl">
-              {!isExporting ? (
-                <>
-                  <div className="flex items-center justify-between">
-                    <h2 className="text-2xl font-black tracking-tighter text-white">EXPORT VIDEO</h2>
-                    <button onClick={() => setShowExportDrawer(false)} className="p-2 text-white/40 hover:text-white transition-colors">
-                      <X className="w-6 h-6" />
-                    </button>
-                  </div>
-                  
-                  <div className="space-y-6">
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase text-white/30 tracking-[0.3em]">Resolusi</label>
-                      <div className="flex gap-2">
-                        {['720p', '1080p', '4K'].map(res => (
-                          <button 
-                            key={res}
-                            onClick={() => setExportRes(res)}
-                            className={cn(
-                              "flex-1 py-3 rounded-xl border font-black text-[10px] tracking-widest transition-all",
-                              exportRes === res ? "bg-white text-black border-white" : "border-white/10 text-white/40 bg-white/5"
-                            )}
-                          >
-                            {res}
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-3">
-                      <label className="text-[10px] font-black uppercase text-white/30 tracking-[0.3em]">Frame Rate</label>
-                      <div className="flex gap-2">
-                        {[24, 30, 60].map(fps => (
-                          <button 
-                            key={fps}
-                            onClick={() => setExportFps(fps)}
-                            className={cn(
-                              "flex-1 py-3 rounded-xl border font-black text-[10px] tracking-widest transition-all",
-                              exportFps === fps ? "bg-white text-black border-white" : "border-white/10 text-white/40 bg-white/5"
-                            )}
-                          >
-                            {fps}FPS
-                          </button>
-                        ))}
-                      </div>
-                    </div>
-                  </div>
-
-                  <button 
-                    onClick={handleExport}
-                    className="w-full py-5 bg-white text-black rounded-2xl font-black uppercase tracking-[0.2em] text-sm hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-white/5"
-                  >
-                    Simpan ke Galeri
-                  </button>
-                </>
-              ) : (
-                <div className="flex flex-col items-center py-12 gap-10">
-                   <div className="relative w-32 h-32 flex items-center justify-center">
-                      <svg className="w-full h-full -rotate-90">
-                        <circle cx="64" cy="64" r="60" fill="none" stroke="currentColor" strokeWidth="8" className="text-white/5" />
-                        <circle cx="64" cy="64" r="60" fill="none" stroke="currentColor" strokeWidth="8" strokeDasharray={377} strokeDashoffset={377 - (377 * exportProgress) / 100} className="text-white transition-all duration-300" />
-                      </svg>
-                      <span className="absolute text-2xl font-black font-mono text-white">{exportProgress}%</span>
-                   </div>
-                   <div className="flex flex-col items-center gap-3">
-                     <span className="text-[12px] font-black uppercase tracking-[0.6em] text-white animate-pulse">Rendering</span>
-                     <span className="text-[10px] font-medium text-white/30 text-center tracking-wider">Harap jangan tutup aplikasi atau beralih tugas</span>
-                   </div>
-                </div>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Responsive Main Shell */}
-      <div className="flex-1 flex flex-col md:flex-row overflow-hidden bg-black">
+      {/* 2. MAIN LAYOUT (Header -> Preview -> Timeline -> Navigation) */}
+      <div className="flex-1 flex flex-col overflow-hidden relative">
         
-        {/* Desktop Left Sidebar Tabs - IDENTICAL TO CAPCUT WEB */}
-        <div className="hidden md:flex w-[72px] bg-black border-r border-[#111] flex-col items-center py-6 gap-8 z-[150]">
-          {[
-            { id: 'edit', icon: Scissors, label: 'Edit' },
-            { id: 'audio', icon: Music, label: 'Audio' },
-            { id: 'text', icon: Type, label: 'Teks' },
-            { id: 'overlay', icon: Layers, label: 'Overlay' },
-            { id: 'effects', icon: Wand2, label: 'Efek' },
-            { id: 'adjust', icon: Sliders, label: 'Sesuaikan' },
-          ].map(item => (
-            <button 
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={cn(
-                "flex flex-col items-center gap-1.5 transition-all group outline-none",
-                activeTab === item.id || (item.id === 'edit' && selectedClipId) ? "text-white" : "text-[#444] hover:text-white"
-              )}
-            >
-              <div className={cn(
-                "p-2 rounded-xl transition-all",
-                (activeTab === item.id || (item.id === 'edit' && selectedClipId)) ? "bg-white/10" : "group-hover:bg-white/5"
-              )}>
-                <item.icon className="w-5 h-5" />
-              </div>
-              <span className="text-[9px] font-black uppercase tracking-tight">{item.label}</span>
-            </button>
-          ))}
-        </div>
+        {/* TOP HALF: Preview Area */}
+        <div className="flex-1 flex flex-col min-h-0 bg-black">
+          
+          {/* Preview Viewport */}
+          <div className="flex-1 flex flex-col relative min-w-0 bg-[#080808] overflow-hidden">
+             {/* Preview Content */}
+             <div className="flex-1 relative flex items-center justify-center p-0 md:p-8 overflow-hidden">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,194,203,0.03)_0%,transparent_70%)] pointer-events-none" />
+                
+                <Preview 
+                  clips={clips} 
+                  currentTime={currentTime} 
+                  selectedClipId={selectedClipId} 
+                  aspectRatio={aspectRatio}
+                  isPlaying={isPlaying}
+                  isMuted={isMuted}
+                  isTransforming={activeTab === 'transform'}
+                  onTogglePlay={() => setIsPlaying(!isPlaying)}
+                  onUpdateClip={handleUpdateClip}
+                  onUpdateEnd={() => pushToHistory(clipsRef.current)}
+                />
+             </div>
+              {/* Preview Controls Bar (Maximize, Play, Undo/Redo) - Android Style */}
+             <div className="flex-shrink-0 h-9 md:h-16 border-t border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl flex items-center justify-between px-6 md:px-8">
+                <button 
+                  onClick={() => editorRef.current?.requestFullscreen()}
+                  className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90"
+                >
+                  <Maximize2 className="w-3.5 h-3.5 md:w-5 md:h-5 rotate-45" />
+                </button>
+                
+                <button 
+                  onClick={() => setIsPlaying(!isPlaying)}
+                  className="w-10 h-10 md:w-12 md:h-12 flex items-center justify-center text-white active:scale-75 transition-all"
+                >
+                  {isPlaying ? (
+                    <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+                      <Pause className="w-6 h-6 md:w-9 md:h-9 fill-current" />
+                    </motion.div>
+                  ) : (
+                    <motion.div initial={{ scale: 0.8 }} animate={{ scale: 1 }}>
+                      <Play className="w-6 h-6 md:w-9 md:h-9 fill-current translate-x-0.5" />
+                    </motion.div>
+                  )}
+                </button>
 
-        {/* Desktop Assets / Tool List Panel */}
-        <div className="hidden lg:flex w-72 bg-[#0a0a0a] border-r border-[#111] flex-col z-[140]">
-           <div className="h-14 px-5 flex items-center border-b border-white/5">
-              <span className="text-[11px] font-black uppercase tracking-[0.15em] text-white/80">{activeTab}</span>
-           </div>
-           <div className="flex-1 overflow-y-auto p-4 custom-scrollbar">
-              <div className="grid grid-cols-2 gap-3">
-                 {Array.from({ length: 7 }).map((_, i) => (
-                    <div key={i} className="aspect-video bg-white/5 rounded-lg border border-white/5 hover:border-white/20 transition-all cursor-pointer overflow-hidden p-2 group">
-                       <div className="w-full h-full bg-[#111] rounded flex items-center justify-center">
-                          {activeTab === 'audio' ? <Music className="w-4 h-4 text-white/10 group-hover:text-white/30" /> : <Image className="w-4 h-4 text-white/10 group-hover:text-white/30" />}
-                       </div>
-                    </div>
-                 ))}
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={undo} 
+                    disabled={historyIndex === 0} 
+                    className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center disabled:opacity-5 text-white/40 hover:text-white transition-all active:scale-90"
+                  >
+                    <Undo className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                  <button 
+                    onClick={redo} 
+                    disabled={historyIndex === history.length - 1} 
+                    className="w-9 h-9 md:w-10 md:h-10 flex items-center justify-center disabled:opacity-5 text-white/40 hover:text-white transition-all active:scale-90"
+                  >
+                    <Redo className="w-4 h-4 md:w-5 md:h-5" />
+                  </button>
+                </div>
+             </div>
+
+          </div>
+       </div>
+
+        {/* BOTTOM HALF: Timeline Area */}
+        <div className="flex-shrink-0 flex flex-col bg-[#050505] border-t border-white/[0.05] z-[100] h-[160px] md:h-[420px]">
+           {/* Timeline Toolbar (Time, Split, etc) */}
+           <div className="h-10 md:h-12 px-4 border-b border-white/5 flex items-center justify-between bg-[#0a0a0a]">
+              <div className="flex items-center gap-6">
+                 <div className="flex items-center gap-1.5 text-[10px] md:text-[11px] font-bold font-mono">
+                    <span className="text-white">{formatTime(currentTime)}</span>
+                    <span className="text-white/20">/</span>
+                    <span className="text-white/40">{formatTime(totalDuration)}</span>
+                 </div>
+              </div>
+
+              <div className="flex items-center gap-1">
                  <button 
-                  onClick={handleAddMedia}
-                  className="aspect-video rounded-lg border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-2 hover:border-[#00c2cb] hover:bg-[#00c2cb]/5 transition-all group"
+                  onClick={handleSplit}
+                  disabled={!selectedClipId}
+                  className="p-1 md:p-1.5 text-white/80 hover:text-white disabled:opacity-20 transition-all flex flex-col items-center gap-0.5"
                  >
-                    <Plus className="w-5 h-5 text-white/20 group-hover:text-[#00c2cb]" />
-                    <span className="text-[9px] font-black uppercase text-white/20 group-hover:text-[#00c2cb]">Impor</span>
+                    <Scissors className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="text-[7px] md:text-[8px] font-bold uppercase">Bagi</span>
+                 </button>
+
+                 <div className="w-[1px] h-5 md:h-6 bg-white/10 mx-1" />
+
+                 <button 
+                  onClick={handleToggleKeyframe}
+                  disabled={!selectedClipId}
+                  className={cn(
+                    "p-1 md:p-1.5 transition-all flex flex-col items-center gap-0.5 focus:outline-none",
+                    selectedClipId && clips.find(c => c.id === selectedClipId)?.keyframes.some(k => Math.abs(k.time - (currentTime - (clips.find(c => c.id === selectedClipId)?.start || 0))) < 0.1)
+                      ? "text-[#00c2cb] drop-shadow-[0_0_8px_rgba(0,194,203,0.5)]"
+                      : "text-white/80 hover:text-white disabled:opacity-20"
+                  )}
+                 >
+                    <Diamond className={cn("w-4 h-4 md:w-5 md:h-5", selectedClipId && clips.find(c => c.id === selectedClipId)?.keyframes.some(k => Math.abs(k.time - (currentTime - (clips.find(c => c.id === selectedClipId)?.start || 0))) < 0.1) ? "fill-current" : "")} />
+                    <span className="text-[7px] md:text-[8px] font-bold uppercase">Keyframe</span>
+                 </button>
+
+                 <div className="w-[1px] h-5 md:h-6 bg-white/10 mx-1" />
+
+                 <button 
+                  onClick={handleDelete}
+                  disabled={!selectedClipId}
+                  className="p-1 md:p-1.5 text-white/80 hover:text-white disabled:opacity-20 transition-all flex flex-col items-center gap-0.5"
+                 >
+                    <Trash2 className="w-4 h-4 md:w-5 md:h-5" />
+                    <span className="text-[7px] md:text-[8px] font-bold uppercase">Hapus</span>
                  </button>
               </div>
            </div>
-        </div>
 
-        {/* Responsive Content Area */}
-        <div className="flex-1 flex flex-col bg-black overflow-hidden relative border-none">
-          <div className="flex-1 flex overflow-hidden">
-            {/* Center Panel (Preview) */}
-            <div className="flex-1 flex flex-col relative min-w-0 bg-black overflow-hidden">
-              <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden bg-black/20">
-          <Preview 
-            clips={clips} 
-            currentTime={currentTime} 
-            selectedClipId={selectedClipId} 
-            aspectRatio={aspectRatio}
-            isPlaying={isPlaying}
-            isMuted={isMuted}
-            onTogglePlay={() => setIsPlaying(!isPlaying)}
-            onUpdateClip={handleUpdateClip}
-            onUpdateEnd={() => pushToHistory(clipsRef.current)}
-          />
-                </div>
-
-                {/* Floating Action Bar (Responsive Mobile) */}
-                <div className="absolute bottom-20 left-1/2 -translate-x-1/2 flex items-center gap-2 bg-black/70 backdrop-blur-3xl border border-white/20 px-2 py-2 rounded-2xl shadow-2xl z-50 md:hidden">
-                   <button 
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      className="w-12 h-12 flex items-center justify-center bg-white text-black rounded-xl active:scale-95 transition-transform"
-                    >
-                      {isPlaying ? <Pause className="w-6 h-6 fill-current" /> : <Play className="w-6 h-6 fill-current translate-x-0.5" />}
-                    </button>
-                    <div className="w-[1px] h-8 bg-white/10 mx-2" />
-                    <button className="p-3.5 text-white/80 hover:text-white transition-colors">
-                      <Maximize2 className="w-6 h-6" />
-                    </button>
-                </div>
-              </div>
-
-              {/* Sub-preview controls info - Desktop Only Toolbar above Timeline */}
-              <div className="hidden md:flex h-12 border-b border-[#111] bg-[#050505] items-center justify-between px-6">
-                 <div className="flex items-center gap-6">
-                    <div className="text-[11px] font-black font-mono tracking-tighter text-white">
-                      {formatTime(currentTime)} / {formatTime(totalDuration)}
-                    </div>
-                    <div className="flex items-center gap-3">
-                       <button onClick={undo} disabled={historyIndex === 0} className="p-1 disabled:opacity-20 text-white/60 hover:text-white transition-opacity"><CornerUpLeft className="w-4 h-4" /></button>
-                       <button onClick={redo} disabled={historyIndex === history.length - 1} className="p-1 disabled:opacity-20 text-white/60 hover:text-white transition-opacity"><CornerUpRight className="w-4 h-4" /></button>
-                    </div>
-                 </div>
-                 <div className="flex items-center gap-5">
-                    <button 
-                      onClick={() => setIsPlaying(!isPlaying)}
-                      className="flex items-center justify-center text-white active:scale-90 transition-transform"
-                    >
-                      {isPlaying ? <Pause className="w-5 h-5 fill-white" /> : <Play className="w-5 h-5 fill-white translate-x-0.5" />}
-                    </button>
-                    <div className="w-[1px] h-4 bg-white/5" />
-                    <button onClick={handleToggleKeyframe} className={cn("flex items-center gap-2 px-3 py-1.5 rounded-lg border transition-all outline-none", selectedClipId && clips.find(c => c.id === selectedClipId)?.keyframes.some(k => Math.abs(k.time - (currentTime - (clips.find(c => c.id === selectedClipId)?.start || 0))) < 0.1) ? "bg-[#00c2cb]/10 border-[#00c2cb] text-[#00c2cb]" : "bg-white/5 border-white/5 text-white/40 hover:text-white")}>
-                       <Diamond className="w-3.5 h-3.5 fill-current" />
-                       <span className="text-[9px] font-black uppercase">Keyframe</span>
-                    </button>
-                 </div>
-                 <div className="flex items-center gap-2">
-                    <div className="text-[8px] font-black text-white/20 uppercase tracking-[0.2em] px-2 py-1 bg-white/5 rounded">Live Player</div>
-                 </div>
+           {/* Timeline Tracks */}
+           <div className="flex-1 flex overflow-hidden">
+              <div className="flex-1 relative overflow-hidden bg-[#050505] shadow-inner">
+                 <Timeline 
+                    clips={clips}
+                    currentTime={currentTime}
+                    duration={totalDuration}
+                    onTimeChange={setCurrentTime}
+                    selectedClipId={selectedClipId}
+                    onClipSelect={(id) => {
+                      setSelectedClipId(id);
+                      if (id) setActiveTab('edit');
+                    }}
+                    onAddMedia={handleAddMedia}
+                    onAddAudio={handleAddAudio}
+                    onAddText={handleAddText}
+                    onSplit={handleSplit}
+                    onUpdateClip={handleUpdateClip}
+                    onUpdateEnd={() => pushToHistory(clipsRef.current)}
+                    onTabChange={setActiveTab}
+                    onReorderClips={handleReorderClips}
+                    isMuted={isMuted}
+                    onToggleMute={() => setIsMuted(!isMuted)}
+                 />
               </div>
            </div>
-
-           {/* Right Sidebar (Desktop - Properties Panel) */}
-           {selectedClipId && (
-             <div className="hidden md:flex w-80 bg-[#0a0a0a] border-l border-[#111] flex-col overflow-y-auto custom-scrollbar">
-                <div className="h-14 px-6 flex items-center border-b border-white/5 sticky top-0 bg-[#0a0a0a] z-10">
-                  <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Properti Clip</span>
-                </div>
-                <div className="p-6 space-y-8">
-                   {/* Sync Info */}
-                   <div className="bg-[#00c2cb]/5 border border-[#00c2cb]/20 p-4 rounded-xl space-y-1">
-                      <div className="text-[8px] font-black uppercase text-[#00c2cb] tracking-widest">Sinkronisasi Media</div>
-                      <div className="text-[11px] font-bold text-white/80">Media mengikuti durasi asli file yang diunggah.</div>
-                   </div>
-
-                   {/* Transform */}
-                   <div className="space-y-4">
-                      <label className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em]">Kontrol Clip</label>
-                      <div className="grid grid-cols-2 gap-4">
-                         <div className="space-y-2">
-                            <div className="flex justify-between items-center">
-                               <span className="text-[9px] text-white/40 font-bold block">Skala</span>
-                               <span className="text-[10px] text-[#00c2cb] font-mono">{Math.round((selectedClip?.scale || 1) * 100)}%</span>
-                            </div>
-                            <input 
-                              type="range" 
-                              min="0.1" max="2" step="0.01" 
-                              value={selectedClip?.scale || 1}
-                              onChange={(e) => handleUpdateClip(selectedClipId, { scale: parseFloat(e.target.value) })}
-                              className="w-full accent-[#00c2cb] h-1 bg-white/10 rounded-full appearance-none outline-none"
-                            />
-                         </div>
-                         <div className="space-y-2">
-                           <div className="flex justify-between items-center">
-                               <span className="text-[9px] text-white/40 font-bold block">Putar</span>
-                               <span className="text-[10px] text-[#00c2cb] font-mono">{selectedClip?.rotation || 0}°</span>
-                            </div>
-                            <input 
-                              type="range" 
-                              min="0" max="360" 
-                              value={selectedClip?.rotation || 0}
-                              onChange={(e) => handleUpdateClip(selectedClipId, { rotation: parseInt(e.target.value) })}
-                              className="w-full accent-[#00c2cb] h-1 bg-white/10 rounded-full appearance-none outline-none"
-                            />
-                         </div>
-                      </div>
-                   </div>
-
-                   <div className="space-y-4">
-                      <label className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em]">Durasi ({formatTime(selectedClip?.duration || 0)})</label>
-                      <input 
-                        type="range" 
-                        min="0.1" max="60" step="0.1" 
-                        value={selectedClip?.duration || 3}
-                        onChange={(e) => handleUpdateClip(selectedClipId, { duration: parseFloat(e.target.value) })}
-                        className="w-full accent-[#00c2cb] h-1 bg-white/10 rounded-full appearance-none outline-none"
-                      />
-                   </div>
-
-                   <div className="pt-4 flex flex-col gap-3">
-                      <button 
-                        onClick={handleDelete}
-                        className="w-full py-3 bg-red-500/10 text-red-500 border border-red-500/20 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-red-500 hover:text-white transition-all outline-none"
-                      >
-                        Hapus Clip
-                      </button>
-                      <button 
-                        onClick={handleCopy}
-                        className="w-full py-3 bg-white/5 text-white border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all outline-none"
-                      >
-                        Duplikat Clip
-                      </button>
-                   </div>
-                </div>
-             </div>
-           )}
-          {/* Timeline Section Area */}
-          <div className="flex-shrink-0 flex flex-col bg-[#050505] border-t border-[#111] z-10 md:h-[350px]">
-            {/* Time Info row - Improved for desktop */}
-            <div className="h-10 px-4 flex items-center justify-between border-b border-white/5 bg-[#080808]">
-               <div className="text-[11px] font-black font-mono tracking-tighter text-white/90">
-                 {formatTime(currentTime)} <span className="text-white/20 mx-1">/</span> <span className="text-white/40">{formatTime(totalDuration)}</span>
-               </div>
-               <div className="hidden md:flex items-center gap-4 mr-4">
-                  <div className="flex bg-[#111] rounded-lg p-1 gap-1">
-                     <button className="px-3 py-1 bg-white/10 rounded text-[9px] font-black uppercase text-white outline-none">Video</button>
-                     <button className="px-3 py-1 text-[9px] font-black uppercase text-white/20 hover:text-white outline-none">Audio</button>
-                  </div>
-               </div>
-               <div className="text-[9px] font-black uppercase text-white/10 tracking-[0.3em] flex items-center gap-6">
-                 <span>00:00</span>
-                 <span>00:01</span>
-                 <span>00:02</span>
-                 <span>00:03</span>
-               </div>
-            </div>
-
-            <div className="flex-1 flex overflow-hidden">
-              {/* Timeline Sidebar - CapCut Styled */}
-              <div className="w-[84px] bg-[#0a0a0a] border-r border-[#111] flex flex-col pt-6 z-20 overflow-y-hidden">
-                 <div className="flex flex-col items-center gap-7">
-                    <button 
-                      onClick={() => setIsMuted(!isMuted)}
-                      className="flex flex-col items-center gap-1.5 group outline-none"
-                    >
-                      <div className={cn("w-10 h-10 rounded-xl flex items-center justify-center transition-all", isMuted ? "bg-[#00c2cb]/10 text-[#00c2cb]" : "bg-white/5 text-white/50 group-hover:bg-white/10")}>
-                        <Volume2 className={cn("w-[22px] h-[22px]", isMuted && "fill-current")} />
-                      </div>
-                      <span className="text-[8px] font-black uppercase text-[#444] text-center leading-[1.1] tracking-tight">Bisukan<br/>audio</span>
-                    </button>
-
-                    <button className="hidden md:flex flex-col items-center gap-1.5 group outline-none">
-                       <div className="w-10 h-10 rounded-xl bg-white/5 text-white/50 flex items-center justify-center group-hover:bg-white/10 transition-all">
-                         <Target className="w-[18px] h-[18px]" />
-                       </div>
-                       <span className="text-[8px] font-black uppercase text-[#444] text-center leading-[1.1] tracking-tight">Fokus<br/>klip</span>
-                    </button>
-
-                    <button className="flex flex-col items-center gap-1.5 group outline-none">
-                       <div className="w-10 h-10 rounded-xl bg-white/5 border border-white/10 overflow-hidden group-hover:border-white/20 transition-all relative">
-                          <Image className="w-full h-full p-2.5 text-white/10" />
-                          <div className="absolute inset-0 bg-black/50 flex items-center justify-center">
-                            <Scissors className="w-4 h-4 text-white rotate-90" />
-                          </div>
-                       </div>
-                       <span className="text-[8px] font-black uppercase text-[#444] text-center leading-[1.1] tracking-tight">Sampul</span>
-                    </button>
-                 </div>
-              </div>
-
-              <div className="flex-1 relative overflow-hidden bg-[#050505]">
-                <Timeline 
-                  clips={clips}
-                  currentTime={currentTime}
-                  duration={totalDuration}
-                  onTimeChange={setCurrentTime}
-                  selectedClipId={selectedClipId}
-                  onClipSelect={(id) => {
-                    setSelectedClipId(id);
-                    if (id) setActiveTab('edit');
-                  }}
-                  onAddMedia={handleAddMedia}
-                  onAddText={handleAddText}
-                  onSplit={handleSplit}
-                  onUpdateClip={handleUpdateClip}
-                  onUpdateEnd={() => pushToHistory(clipsRef.current)}
-                  onTabChange={setActiveTab}
-                  onReorderClips={handleReorderClips}
-                  isMuted={isMuted}
-                  onToggleMute={() => setIsMuted(!isMuted)}
-                />
-              </div>
-            </div>
-          </div>
         </div>
       </div>
 
-      {/* Toolbar Area - Mobile Only */}
-      <div className="md:hidden flex-shrink-0 h-[calc(140px+env(safe-area-inset-bottom))] bg-black border-t border-white/5 z-[200] pb-[calc(70px+env(safe-area-inset-bottom))]">
-          <Toolbar 
+      {/* 3. BOTTOM TOOLBAR (Mobile & Desktop) */}
+      <div className="flex-shrink-0 bg-black border-t border-white/10 z-[300] safe-area-bottom h-[68px] md:h-[92px]">
+         <Toolbar 
             activeTab={activeTab}
             onSplit={handleSplit}
             onCopy={handleCopy}
@@ -996,6 +868,7 @@ export default function Editor({ project, onBack }: EditorProps) {
             onAddAudio={handleAddAudio}
             onAddMedia={handleAddMedia}
             onDelete={handleDelete}
+            onToggleKeyframe={handleToggleKeyframe}
             canSplit={!!selectedClipId}
             selectedClipType={clips.find(c => c.id === selectedClipId)?.type}
             onTabChange={(tab) => {
@@ -1005,15 +878,14 @@ export default function Editor({ project, onBack }: EditorProps) {
               } else if (tab === 'edit' && !selectedClipId) {
                 const clipAtPlayhead = clips.find(c => currentTime >= c.start && currentTime <= c.start + c.duration);
                 if (clipAtPlayhead) setSelectedClipId(clipAtPlayhead.id);
-                else if (clips.length > 0) setSelectedClipId(clips[0].id);
               }
             }}
-          />
+         />
       </div>
+      {/* 4. EDITING SUB-MENU OVERLAYS (Spring Animation) */}
 
-      {/* Unified Overlay for all editing sub-menus */}
       <AnimatePresence>
-        {activeTab !== 'edit' && activeTab !== 'main' && (
+        {activeTab !== 'edit' && activeTab !== 'media' && activeTab !== 'text' && activeTab !== 'sticker' && activeTab !== 'effect' && activeTab !== 'filter' && activeTab !== 'adjust-root' && activeTab !== 'main' && (
           <motion.div 
             initial={{ y: '100%' }}
             animate={{ y: 0 }}
@@ -1021,62 +893,290 @@ export default function Editor({ project, onBack }: EditorProps) {
             transition={{ type: 'spring', damping: 25, stiffness: 200 }}
             className="fixed inset-0 z-[600] flex flex-col"
           >
-            <div className="flex-1 pointer-events-none" onClick={() => setActiveTab('edit')} />
-            <div className="h-[48%] bg-[#050505] border-t border-white/10 shadow-[0_-20px_50px_rgba(0,0,0,0.8)] flex flex-col">
-              <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-black/40 backdrop-blur-xl">
-                <button onClick={() => setActiveTab('edit')} className="p-2 text-[#444] hover:text-white transition-colors">
+            <div className="flex-1 pointer-events-none" onClick={() => setActiveTab('main')} />
+            <div className="h-[52%] md:h-[58%] bg-[#121212] border-t border-white/10 shadow-[0_-20px_60px_rgba(0,0,0,0.9)] flex flex-col rounded-t-[32px] overflow-hidden pointer-events-auto">
+              <div className="flex items-center justify-between px-6 h-14 border-b border-white/5 bg-black/40 backdrop-blur-xl">
+                <button onClick={() => setActiveTab('main')} className="p-2 -ml-2 text-white/40 hover:text-white transition-colors">
                   <X className="w-5 h-5" />
                 </button>
-                <span className="text-[12px] font-black uppercase tracking-[0.35em] text-white/90">
-                  {activeTab === 'ratio' ? 'Aspek Rasio' : 
-                   activeTab === 'text' ? 'Edit Teks' : 
-                   activeTab === 'keyframes' ? 'Keyframe' : 
-                   activeTab === 'duration' ? 'Durasi' :
-                   activeTab === 'filters' ? 'Filter' : 
-                   activeTab === 'audio' || activeTab === 'volume' ? 'Volume' : 
-                   activeTab === 'canvas' ? 'Kanvas' :
-                   activeTab === 'speed' ? 'Kecepatan' :
-                   activeTab === 'transform' ? 'Transform' :
-                   activeTab === 'animation' ? 'Animasi' :
-                   activeTab === 'adjust' || activeTab === 'adjust-root' ? 'Sesuaikan' :
-                   activeTab === 'blend' ? 'Campuran' :
-                   activeTab === 'stickers' ? 'Stiker' :
-                   activeTab === 'overlay' ? 'Overlay' : 
-                   activeTab === 'audio-fade' ? 'Luntur' :
-                   activeTab === 'transition' ? 'Transisi' :
-                   activeTab === 'chroma' ? 'Hapus Latar' : 'Pengaturan'}
+                <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/90">
+                  {activeTab === 'ratio' ? 'ASPEK RASIO' : 
+                   activeTab === 'text-edit' ? 'UBAH TEKS' : 
+                   activeTab === 'keyframes' ? 'KEYFRAME' : 
+                   activeTab === 'duration' ? 'DURASI' :
+                   activeTab === 'filters-edit' ? 'FILTER' : 
+                   activeTab === 'audio' ? 'AUDIO' :
+                   activeTab === 'audio-edit' || activeTab === 'volume' ? 'VOLUME' : 
+                   activeTab === 'canvas' ? 'KANVAS' :
+                   activeTab === 'speed' ? 'KECEPATAN' :
+                   activeTab === 'speed-curve' ? 'KURVA KECEPATAN' :
+                   activeTab === 'mask' ? 'MASKING' :
+                   activeTab === 'hsl' ? 'WARNA HSL' :
+                   activeTab === 'transform' ? 'DASAR' :
+                   activeTab === 'animation' ? 'ANIMASI' :
+                   activeTab === 'adjust' ? 'SESUAIKAN' :
+                   activeTab === 'blend' ? 'CAMPURAN' :
+                   activeTab === 'stickers' ? 'STIKER' :
+                   activeTab === 'overlay' ? 'OVERLAY' : 
+                   activeTab === 'audio-fade' ? 'LUNTUR' :
+                   activeTab === 'transition' ? 'TRANSISI' :
+                   activeTab === 'chroma' ? 'HAPUS LATAR' : 'PENGATURAN'}
                 </span>
-                <button onClick={() => setActiveTab('edit')} className="p-2 text-white">
+                <button onClick={() => setActiveTab('main')} className="p-2 text-white">
                   <ChevronDown className="w-5 h-5" />
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto no-scrollbar p-6 bg-gradient-to-b from-[#080808] to-black pointer-events-auto">
+              <div className="flex-1 overflow-y-auto no-scrollbar p-6 bg-gradient-to-b from-[#080808] to-black">
+                {activeTab === 'transform' && selectedClipId && (
+                  <div className="flex flex-col h-full">
+                    {/* Transform Tabs */}
+                    <div className="flex items-center gap-8 mb-10 px-2">
+                      {(['posisi', 'zoom', 'putar'] as const).map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setTransformTab(tab)}
+                          className={cn(
+                            "text-[11px] font-black uppercase tracking-[0.2em] transition-all relative pb-2 flex-shrink-0",
+                            transformTab === tab ? "text-white" : "text-white/30 hover:text-white/60"
+                          )}
+                        >
+                          {tab === 'posisi' ? 'Posisi' : tab === 'zoom' ? 'Zoom' : 'Putar'}
+                          {transformTab === tab && (
+                            <motion.div 
+                              layoutId="transformTabUnderline"
+                              className="absolute bottom-0 left-0 right-0 h-[2.5px] bg-[#00c2cb] rounded-full shadow-[0_0_10px_#00c2cb]"
+                            />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Transform Content */}
+                    <div className="flex-1 flex flex-col justify-center gap-16 pb-20">
+                      {transformTab === 'posisi' && (
+                        <div className="flex flex-col gap-10">
+                          <DialSlider 
+                            label="Sumbu X"
+                            min={-500}
+                            max={500}
+                            value={clips.find(c => c.id === selectedClipId)?.x || 0}
+                            onChange={(val) => handleUpdateClip(selectedClipId, { x: Math.round(val) })}
+                          />
+                          <DialSlider 
+                            label="Sumbu Y"
+                            min={-500}
+                            max={500}
+                            value={clips.find(c => c.id === selectedClipId)?.y || 0}
+                            onChange={(val) => handleUpdateClip(selectedClipId, { y: Math.round(val) })}
+                          />
+                          <div className="flex gap-4 px-4">
+                             <button 
+                              onClick={() => {
+                                const clip = clips.find(c => c.id === selectedClipId);
+                                handleUpdateClip(selectedClipId, { horizontalFlip: !clip?.horizontalFlip });
+                              }}
+                              className={cn(
+                                "flex-1 h-12 border rounded-xl flex items-center justify-center gap-2 transition-all",
+                                clips.find(c => c.id === selectedClipId)?.horizontalFlip ? "bg-white border-white text-black" : "bg-white/5 border-white/10 text-white/40 group-hover:text-white"
+                              )}
+                             >
+                               <FlipHorizontal className="w-4 h-4" />
+                               <span className="text-[10px] font-black uppercase tracking-widest">Cermin H</span>
+                             </button>
+                             <button 
+                              onClick={() => {
+                                const clip = clips.find(c => c.id === selectedClipId);
+                                handleUpdateClip(selectedClipId, { verticalFlip: !clip?.verticalFlip });
+                              }}
+                              className={cn(
+                                "flex-1 h-12 border rounded-xl flex items-center justify-center gap-2 transition-all",
+                                clips.find(c => c.id === selectedClipId)?.verticalFlip ? "bg-white border-white text-black" : "bg-white/5 border-white/10 text-white/40 group-hover:text-white"
+                              )}
+                             >
+                               <FlipVertical className="w-4 h-4" />
+                               <span className="text-[10px] font-black uppercase tracking-widest">Cermin V</span>
+                             </button>
+                          </div>
+                        </div>
+                      )}
+                      {transformTab === 'zoom' && (
+                        <div className="flex flex-col gap-10">
+                          <DialSlider 
+                            label="Skala"
+                            min={10}
+                            max={300}
+                            unit="%"
+                            value={(clips.find(c => c.id === selectedClipId)?.scale || 1) * 100}
+                            onChange={(val) => handleUpdateClip(selectedClipId, { scale: val / 100 })}
+                          />
+                          <div className="px-4">
+                            <button 
+                              onClick={() => handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0 })}
+                              className="w-full h-12 bg-white/5 border border-white/10 rounded-xl text-[10px] font-black uppercase tracking-widest text-white/60"
+                            >
+                              Pas Kanvas
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {transformTab === 'putar' && (
+                        <div className="flex flex-col gap-10">
+                          <DialSlider 
+                            label="Rotasi"
+                            min={-180}
+                            max={180}
+                            unit="°"
+                            value={clips.find(c => c.id === selectedClipId)?.rotation || 0}
+                            onChange={(val) => handleUpdateClip(selectedClipId, { rotation: Math.round(val) })}
+                          />
+                          <div className="px-4">
+                            <button 
+                              onClick={() => {
+                                const clip = clips.find(c => c.id === selectedClipId);
+                                handleUpdateClip(selectedClipId, { rotation: ((clip?.rotation || 0) + 90) % 360 });
+                              }}
+                              className="w-full h-12 bg-white/5 border border-white/10 rounded-xl flex items-center justify-center gap-2 text-white/60"
+                            >
+                              <RotateCw className="w-4 h-4" />
+                              <span className="text-[10px] font-black uppercase tracking-widest">Putar 90°</span>
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Bottom Actions */}
+                    <div className="mt-auto px-6 pb-10 border-t border-white/5 pt-8 flex items-center justify-between bg-black/20">
+                       <button 
+                         onClick={() => {
+                           handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0, rotation: 0, horizontalFlip: false, verticalFlip: false });
+                           pushToHistory(clipsRef.current);
+                         }}
+                         className="flex items-center gap-2.5 px-5 py-2.5 rounded-full hover:bg-white/5 active:bg-white/10 transition-all group"
+                       >
+                         <RotateCcw className="w-4 h-4 text-white/40 group-hover:text-white group-active:rotate-[-45deg] transition-all" />
+                         <span className="text-[11px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">Reset</span>
+                       </button>
+                       
+                       <div className="flex flex-col items-center gap-1 opacity-80">
+                         <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white select-none">Dasar</span>
+                         <div className="w-1 h-1 rounded-full bg-[#00c2cb] shadow-[0_0_5px_#00c2cb]" />
+                       </div>
+                       
+                       <button 
+                         onClick={() => setActiveTab('main')}
+                         className="w-14 h-14 bg-white rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(255,255,255,0.15)] active:scale-75 hover:scale-105 transition-all"
+                       >
+                         <Check className="w-7 h-7 text-black stroke-[3.5]" />
+                       </button>
+                    </div>
+                  </div>
+                )}
                 {activeTab === 'ratio' && (
-                  <div className="grid grid-cols-4 gap-4 pb-8">
-                    {(['9:16', '16:9', '1:1', '4:5', '2.35:1', '2:1', '3:4', 'original'] as const).map((ratio) => (
-                      <button
-                        key={ratio}
-                        onClick={() => setAspectRatio(ratio)}
-                        className={cn(
-                          "flex flex-col items-center gap-3 p-4 rounded-2xl border transition-all duration-300",
-                          aspectRatio === ratio ? "border-white bg-white/10 ring-2 ring-white/10" : "border-white/5 bg-white/[0.02] opacity-40 hover:opacity-100"
-                        )}
+                  <>
+                    <div className="flex overflow-x-auto no-scrollbar gap-4 py-4 px-2">
+                      {([
+                        { id: '9:16', label: '9:16', sub: 'TikTok' },
+                        { id: '16:9', label: '16:9', sub: 'YouTube' },
+                        { id: '1:1', label: '1:1', sub: 'Instagram' },
+                        { id: '4:5', label: '4:5', sub: 'Post' },
+                        { id: '3:4', label: '3:4', sub: 'TV' },
+                        { id: '2.35:1', label: '2.35:1', sub: 'Movie' },
+                        { id: '2:1', label: '2:1', sub: 'Wide' },
+                        { id: 'original', label: 'Asli', sub: 'Original' },
+                      ] as const).map((r) => (
+                        <button
+                          key={r.id}
+                          onClick={() => setAspectRatio(r.id)}
+                          className={cn(
+                            "flex-shrink-0 flex flex-col items-center gap-3 transition-all",
+                            aspectRatio === r.id ? "scale-105" : "opacity-40 hover:opacity-100"
+                          )}
+                        >
+                          <div className={cn(
+                            "w-16 h-24 border-2 rounded-xl flex items-center justify-center relative overflow-hidden transition-all duration-300 shadow-2xl",
+                            aspectRatio === r.id ? "border-white bg-white/10 ring-4 ring-white/5" : "border-white/10 bg-white/[0.02]"
+                          )}>
+                             <div 
+                                className={cn(
+                                  "border-2 border-current transition-all",
+                                  r.id === '9:16' && "w-5 h-9",
+                                  r.id === '16:9' && "w-9 h-5",
+                                  r.id === '1:1' && "w-6 h-6",
+                                  r.id === '4:5' && "w-6 h-7.5",
+                                  r.id === '3:4' && "w-6 h-9",
+                                  r.id === '2.35:1' && "w-11 h-4",
+                                  r.id === '2:1' && "w-10 h-5",
+                                  r.id === 'original' && "w-7 h-7 rounded-full border-dashed"
+                                )}
+                                style={{ color: aspectRatio === r.id ? '#00c2cb' : 'rgba(255,255,255,0.3)' }}
+                             />
+                          </div>
+                          <div className="flex flex-col items-center">
+                            <span className={cn("text-[10px] font-black tracking-widest", aspectRatio === r.id ? "text-white" : "text-white/40")}>{r.label}</span>
+                            <span className="text-[8px] text-white/20 font-black uppercase tracking-tighter">{r.sub}</span>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                    <div className="mt-4 flex gap-3">
+                      <button 
+                         onClick={() => {
+                           if (selectedClipId) {
+                             handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0, rotation: 0 });
+                             pushToHistory(clipsRef.current);
+                           }
+                         }}
+                         disabled={!selectedClipId}
+                         className="flex-1 h-12 bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest rounded-xl active:scale-95 transition-all text-[10px] disabled:opacity-20"
                       >
-                        <div className={cn(
-                          "border-2 border-current shadow-sm",
-                          ratio === 'original' && "w-6 h-6 border-dashed",
-                          ratio === '9:16' && "w-4 h-7",
-                          ratio === '16:9' && "w-7 h-4",
-                          ratio === '1:1' && "w-5 h-5",
-                          ratio === '4:5' && "w-4 h-5",
-                          ratio === '2.35:1' && "w-8 h-3",
-                          ratio === '2:1' && "w-8 h-4",
-                          ratio === '3:4' && "w-6 h-8",
-                        )} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{ratio}</span>
+                         Muat Bingkai
                       </button>
-                    ))}
+                      <button 
+                         onClick={() => setActiveTab('main')}
+                         className="flex-[2] h-12 bg-white text-black font-black uppercase tracking-widest rounded-xl shadow-[0_4px_20px_rgba(255,255,255,0.2)] active:scale-95 transition-all text-xs"
+                      >
+                         Terapkan
+                      </button>
+                    </div>
+                  </>
+                )}
+                {activeTab === 'audio' && (
+                  <div className="flex flex-col h-full">
+                    {/* Audio Sub-menu Grid */}
+                    <div className="grid grid-cols-4 gap-4 px-2 py-4">
+                      {[
+                        { id: 'sounds', label: 'Suara', icon: Music, color: 'bg-blue-500/20 text-blue-400' },
+                        { id: 'effects', label: 'Efek', icon: Wand2, color: 'bg-purple-500/20 text-purple-400' },
+                        { id: 'extracted', label: 'Diekstrak', icon: Download, color: 'bg-green-500/20 text-green-400' },
+                        { id: 'device', label: 'Perangkat', icon: HardDrive, color: 'bg-orange-500/20 text-orange-400', action: handleAddAudio },
+                        { id: 'record', label: 'Rekam', icon: Mic, color: 'bg-red-500/20 text-red-400' },
+                      ].map((item) => (
+                        <button 
+                          key={item.id}
+                          onClick={() => item.action ? item.action() : null}
+                          className="flex flex-col items-center gap-3 transition-all active:scale-90 group"
+                        >
+                          <div className={cn(
+                            "w-12 h-12 md:w-16 md:h-16 rounded-2xl flex items-center justify-center transition-all",
+                            item.color || "bg-white/5 text-white/40"
+                          )}>
+                             <item.icon className="w-6 h-6 md:w-8 md:h-8" />
+                          </div>
+                          <span className="text-[10px] font-bold text-white/60 group-hover:text-white uppercase tracking-tighter text-center">{item.label}</span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {/* Footer / Info */}
+                    <div className="mt-auto px-4 pb-8 flex flex-col items-center gap-4">
+                       <div className="w-full h-[1px] bg-white/5" />
+                       <div className="flex items-center gap-2 text-white/20">
+                          <Headphones className="w-4 h-4" />
+                          <span className="text-[10px] font-bold uppercase tracking-widest">Gunakan Audio Berlisensi</span>
+                       </div>
+                    </div>
                   </div>
                 )}
                 {activeTab === 'duration' && selectedClipId && (
@@ -1092,13 +1192,9 @@ export default function Editor({ project, onBack }: EditorProps) {
                       onPointerUp={() => pushToHistory(clips)}
                       className="w-full h-2.5 bg-white/10 rounded-full appearance-none accent-white cursor-pointer"
                     />
-                    <div className="flex w-full justify-between px-3 text-[11px] font-black uppercase text-white/30 tracking-[0.2em]">
-                       <span>Singkat</span>
-                       <span>Panjang</span>
-                    </div>
                   </div>
                 )}
-                {(activeTab === 'audio' || activeTab === 'volume') && selectedClipId && (
+                {(activeTab === 'audio-edit' || activeTab === 'volume') && selectedClipId && (
                   <div className="space-y-12 py-8">
                      <div className="flex items-center justify-between">
                        <div className="p-4 bg-white/10 rounded-2xl"><Volume2 className="w-8 h-8 text-white" /></div>
@@ -1118,551 +1214,381 @@ export default function Editor({ project, onBack }: EditorProps) {
                 )}
                 {activeTab === 'speed' && selectedClipId && (
                   <div className="space-y-12 py-8">
-                     <div className="flex items-center justify-between">
-                       <div className="p-4 bg-white/10 rounded-2xl"><FastForward className="w-8 h-8 text-white" /></div>
-                       <div className="text-5xl font-black text-white font-mono">
-                          {clips.find(c => c.id === selectedClipId)?.speed.toFixed(1)}<span className="text-xl text-white/20 ml-2">x</span>
-                       </div>
+                     <button 
+                       onClick={() => setActiveTab('speed-curve')}
+                       className="w-full flex items-center justify-between p-6 bg-white/5 border border-white/5 rounded-3xl hover:bg-white/10 transition-all group"
+                     >
+                        <div className="flex items-center gap-4">
+                           <div className="p-3 bg-[#00c2cb]/20 rounded-2xl">
+                              <TrendingUp className="w-6 h-6 text-[#00c2cb]" />
+                           </div>
+                           <div className="text-left">
+                              <span className="block text-[14px] font-black uppercase text-white">Kurva Kecepatan</span>
+                              <span className="block text-[10px] text-white/30 uppercase tracking-widest">Montase, Hero, Bullet, dll</span>
+                           </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-white" />
+                     </button>
+
+                     <div className="space-y-6">
+                        <div className="flex justify-between items-center px-2">
+                           <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Kecepatan Normal</span>
+                           <span className="text-lg font-black text-[#00c2cb]">{(clips.find(c => c.id === selectedClipId)?.speed || 1).toFixed(1)}x</span>
+                        </div>
+                        <input 
+                          type="range"
+                          min="0.1" max="10" step="0.1"
+                          value={clips.find(c => c.id === selectedClipId)?.speed || 1}
+                          onChange={(e) => handleUpdateClip(selectedClipId, { speed: parseFloat(e.target.value) })}
+                          onPointerUp={() => pushToHistory(clips)}
+                          className="w-full h-2 bg-white/10 rounded-full appearance-none accent-[#00c2cb] cursor-pointer"
+                        />
+                        <div className="flex justify-between text-[8px] font-black text-white/10 px-1 uppercase">
+                           <span>0.1x</span>
+                           <span>1.0x</span>
+                           <span>10x</span>
+                        </div>
                      </div>
-                     <div className="grid grid-cols-5 gap-2">
-                        {[0.1, 0.5, 1, 2, 5].map(s => (
-                          <button
-                            key={s}
-                            onClick={() => handleUpdateClip(selectedClipId, { speed: s })}
-                            className={cn(
-                              "py-2 rounded-lg border text-[10px] font-black transition-all",
-                              clips.find(c => c.id === selectedClipId)?.speed === s ? "bg-white text-black border-white" : "border-white/10 text-white/40"
-                            )}
-                          >
-                            {s}x
-                          </button>
-                        ))}
-                     </div>
-                     <input 
-                      type="range"
-                      min="0.1" max="10" step="0.1"
-                      value={clips.find(c => c.id === selectedClipId)?.speed || 1}
-                      onChange={(e) => handleUpdateClip(selectedClipId, { speed: parseFloat(e.target.value) })}
-                      onPointerUp={() => pushToHistory(clips)}
-                      className="w-full h-2.5 bg-white/10 rounded-full appearance-none accent-white cursor-pointer"
-                    />
                   </div>
                 )}
                 {activeTab === 'transform' && selectedClipId && (
-                  <div className="space-y-8 py-4">
-                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Skala</span>
-                           <span className="text-sm font-mono text-white">{Math.round((clips.find(c => c.id === selectedClipId)?.scale ?? 1) * 100)}%</span>
-                        </div>
-                        <input 
-                          type="range" min="0.1" max="5" step="0.01"
-                          value={clips.find(c => c.id === selectedClipId)?.scale ?? 1}
-                          onChange={(e) => handleUpdateClip(selectedClipId, { scale: parseFloat(e.target.value) })}
-                          onPointerUp={() => pushToHistory(clips)}
-                          className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                        />
-                     </div>
-                     <div className="grid grid-cols-2 gap-8">
-                        <div className="space-y-4">
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Posisi X</span>
-                              <span className="text-sm font-mono text-white">{Math.round(clips.find(c => c.id === selectedClipId)?.x ?? 0)}</span>
-                           </div>
-                           <input 
-                             type="range" min="-1000" max="1000" step="1"
-                             value={clips.find(c => c.id === selectedClipId)?.x ?? 0}
-                             onChange={(e) => handleUpdateClip(selectedClipId, { x: parseFloat(e.target.value) })}
-                             onPointerUp={() => pushToHistory(clips)}
-                             className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                           />
-                        </div>
-                        <div className="space-y-4">
-                           <div className="flex justify-between items-center">
-                              <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Posisi Y</span>
-                              <span className="text-sm font-mono text-white">{Math.round(clips.find(c => c.id === selectedClipId)?.y ?? 0)}</span>
-                           </div>
-                           <input 
-                             type="range" min="-1000" max="1000" step="1"
-                             value={clips.find(c => c.id === selectedClipId)?.y ?? 0}
-                             onChange={(e) => handleUpdateClip(selectedClipId, { y: parseFloat(e.target.value) })}
-                             onPointerUp={() => pushToHistory(clips)}
-                             className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                           />
-                        </div>
-                     </div>
-                      <div className="flex items-center justify-between">
-                        <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Rotasi</span>
-                        <div className="flex gap-2">
-                           <button onClick={() => handleUpdateClip(selectedClipId, { horizontalFlip: !clips.find(c => c.id === selectedClipId)?.horizontalFlip })} className={cn("p-4 bg-white/5 rounded-2xl active:bg-white/10 transition-colors", clips.find(c => c.id === selectedClipId)?.horizontalFlip && "bg-white text-black")} title="Balik Horizontal"><FlipHorizontal className="w-5 h-5" /></button>
-                           <button onClick={() => handleUpdateClip(selectedClipId, { verticalFlip: !clips.find(c => c.id === selectedClipId)?.verticalFlip })} className={cn("p-4 bg-white/5 rounded-2xl active:bg-white/10 transition-colors", clips.find(c => c.id === selectedClipId)?.verticalFlip && "bg-white text-black")} title="Balik Vertikal"><FlipVertical className="w-5 h-5" /></button>
-                           <button onClick={() => handleUpdateClip(selectedClipId, { rotation: (clips.find(c => c.id === selectedClipId)?.rotation ?? 0) - 90 })} className="p-4 bg-white/5 rounded-2xl active:bg-white/10 transition-colors"><RotateCcw className="w-6 h-6 text-white" /></button>
-                           <button onClick={() => handleUpdateClip(selectedClipId, { rotation: (clips.find(c => c.id === selectedClipId)?.rotation ?? 0) + 90 })} className="p-4 bg-white/5 rounded-2xl active:bg-white/10 transition-colors"><RotateCw className="w-6 h-6 text-white" /></button>
-                           <button onClick={() => handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0, rotation: 0, horizontalFlip: false, verticalFlip: false })} className="px-6 py-4 bg-white text-black font-black uppercase text-[10px] rounded-2xl">Reset</button>
-                        </div>
-                     </div>
-                  </div>
+                   <div className="space-y-8 py-4">
+                      <div className="space-y-4">
+                         <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/30">
+                            <span>Skala</span>
+                            <span className="text-white">{Math.round((selectedClip?.scale || 1) * 100)}%</span>
+                         </div>
+                         <input 
+                           type="range" min="0.1" max="5" step="0.01"
+                           value={selectedClip?.scale || 1}
+                           onChange={(e) => handleUpdateClip(selectedClipId, { scale: parseFloat(e.target.value) })}
+                           className="w-full accent-white"
+                         />
+                      </div>
+                      <div className="flex justify-between">
+                         <button onClick={() => handleUpdateClip(selectedClipId, { horizontalFlip: !selectedClip?.horizontalFlip })} className="p-4 bg-white/5 rounded-xl"><FlipHorizontal className="w-5 h-5" /></button>
+                         <button onClick={() => handleUpdateClip(selectedClipId, { verticalFlip: !selectedClip?.verticalFlip })} className="p-4 bg-white/5 rounded-xl"><FlipVertical className="w-5 h-5" /></button>
+                         <button onClick={() => handleUpdateClip(selectedClipId, { rotation: (selectedClip?.rotation || 0) + 90 })} className="p-4 bg-white/5 rounded-xl"><RotateCw className="w-5 h-5" /></button>
+                         <button onClick={() => handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0, rotation: 0 })} className="px-6 bg-white text-black font-black uppercase text-[10px] rounded-xl">Reset</button>
+                      </div>
+                   </div>
                 )}
                 {activeTab === 'animation' && selectedClipId && (
-                  <div className="space-y-8 py-4">
-                     <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Animasi Masuk</label>
-                        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4">
-                           {(['none', 'fade', 'slide-up', 'slide-left', 'zoom', 'bounce', 'rotate-zoom', 'white-flash', 'black-flash'] as const).map(anim => (
-                             <button
-                               key={anim}
-                               onClick={() => handleUpdateClip(selectedClipId, { animationIn: anim })}
-                               className={cn(
-                                 "flex-shrink-0 w-24 h-24 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all",
-                                 clips.find(c => c.id === selectedClipId)?.animationIn === anim ? "bg-white text-black border-white" : "bg-white/5 text-white/40 border-white/5"
-                               )}
-                             >
-                               <div className="w-8 h-8 rounded-full bg-current opacity-20" />
-                               <span className="text-[8px] font-black uppercase text-center px-1 line-clamp-2">{anim}</span>
-                             </button>
-                           ))}
-                        </div>
-                     </div>
-                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Durasi Masuk</span>
-                           <span className="text-sm font-mono text-white">{(clips.find(c => c.id === selectedClipId)?.animationInDuration ?? 0.5).toFixed(1)}s</span>
-                        </div>
-                        <input 
-                          type="range" min="0.1" max="3" step="0.1"
-                          value={clips.find(c => c.id === selectedClipId)?.animationInDuration ?? 0.5}
-                          onChange={(e) => handleUpdateClip(selectedClipId, { animationInDuration: parseFloat(e.target.value) })}
-                          onPointerUp={() => pushToHistory(clips)}
-                          className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                        />
-                     </div>
-
-                     <div className="space-y-3">
-                        <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Animasi Keluar</label>
-                        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4">
-                           {(['none', 'fade', 'slide-down', 'slide-right', 'zoom', 'blur-fade', 'rotate-zoom'] as const).map(anim => (
-                             <button
-                               key={anim}
-                               onClick={() => handleUpdateClip(selectedClipId, { animationOut: anim })}
-                               className={cn(
-                                 "flex-shrink-0 w-24 h-24 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all",
-                                 clips.find(c => c.id === selectedClipId)?.animationOut === anim ? "bg-white text-black border-white" : "bg-white/5 text-white/40 border-white/5"
-                               )}
-                             >
-                               <div className="w-8 h-8 rounded-full bg-current opacity-20" />
-                               <span className="text-[8px] font-black uppercase text-center px-1 line-clamp-2">{anim}</span>
-                             </button>
-                           ))}
-                        </div>
-                     </div>
-                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Durasi Keluar</span>
-                           <span className="text-sm font-mono text-white">{(clips.find(c => c.id === selectedClipId)?.animationOutDuration ?? 0.5).toFixed(1)}s</span>
-                        </div>
-                        <input 
-                          type="range" min="0.1" max="3" step="0.1"
-                          value={clips.find(c => c.id === selectedClipId)?.animationOutDuration ?? 0.5}
-                          onChange={(e) => handleUpdateClip(selectedClipId, { animationOutDuration: parseFloat(e.target.value) })}
-                          onPointerUp={() => pushToHistory(clips)}
-                          className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                        />
-                     </div>
-                  </div>
+                   <div className="space-y-8 py-4">
+                      <div className="space-y-3">
+                         <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Animasi Masuk</label>
+                         <div className="flex gap-3 overflow-x-auto no-scrollbar pb-4">
+                            {(['none', 'fade', 'slide-up', 'slide-left', 'zoom', 'bounce', 'rotate-zoom', 'white-flash', 'black-flash'] as const).map(anim => (
+                              <button
+                                key={anim}
+                                onClick={() => handleUpdateClip(selectedClipId, { animationIn: anim })}
+                                className={cn(
+                                  "flex-shrink-0 w-24 h-24 rounded-2xl border flex flex-col items-center justify-center gap-2 transition-all",
+                                  selectedClip?.animationIn === anim ? "bg-white text-black border-white" : "bg-white/5 text-white/40 border-white/5"
+                                )}
+                              >
+                                <div className="w-8 h-8 rounded-full bg-current opacity-20" />
+                                <span className="text-[8px] font-black uppercase text-center px-1 line-clamp-2">{anim}</span>
+                              </button>
+                            ))}
+                         </div>
+                      </div>
+                   </div>
                 )}
-                {activeTab === 'chroma' && selectedClipId && (
-                  <div className="flex flex-col items-center py-12 gap-8 text-center">
-                     <div className={cn(
-                        "w-24 h-24 rounded-full flex items-center justify-center transition-all duration-500",
-                        clips.find(c => c.id === selectedClipId)?.chromaKey ? "bg-green-500 shadow-[0_0_40px_rgba(34,197,94,0.4)]" : "bg-white/5"
-                     )}>
-                        <Wand2 className={cn("w-10 h-10", clips.find(c => c.id === selectedClipId)?.chromaKey ? "text-white" : "text-white/20")} />
-                     </div>
-                     <div className="space-y-4">
-                        <h3 className="text-xl font-black text-white uppercase tracking-tighter">Penghapus Latar</h3>
-                        <p className="text-sm text-white/40 max-w-xs leading-relaxed">Secara otomatis menghapus latar belakang warna solid (hijau/biru) dari media yang dipilih.</p>
-                     </div>
-                     <button
-                       onClick={() => {
-                         const current = !!clips.find(c => c.id === selectedClipId)?.chromaKey;
-                         handleUpdateClip(selectedClipId, { chromaKey: !current });
-                         pushToHistory(clips);
-                       }}
-                       className={cn(
-                         "w-full py-5 rounded-2xl font-black uppercase tracking-[0.2em] transition-all",
-                         clips.find(c => c.id === selectedClipId)?.chromaKey ? "bg-red-500/10 text-red-500 border border-red-500/20" : "bg-white text-black"
-                       )}
+                {activeTab === 'adjust' && selectedClipId && (
+                   <div className="space-y-8 py-4">
+                     <button 
+                       onClick={() => setActiveTab('hsl')}
+                       className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/5 rounded-2xl hover:bg-white/10 transition-all group"
                      >
-                       {clips.find(c => c.id === selectedClipId)?.chromaKey ? 'Matikan Kroma' : 'Aktifkan Kroma'}
+                        <div className="flex items-center gap-3">
+                           <div className="w-10 h-10 rounded-full bg-gradient-to-tr from-red-500 via-green-500 to-blue-500" />
+                           <div className="text-left">
+                              <span className="block text-[11px] font-black uppercase text-white/90">Warna HSL</span>
+                              <span className="block text-[9px] text-white/30 uppercase">Atur warna spesifik</span>
+                           </div>
+                        </div>
+                        <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-white" />
                      </button>
-                  </div>
+
+                     {[
+                       { key: 'brightness', label: 'Kecerahan', min: 0, max: 200, icon: Sun },
+                       { key: 'contrast', label: 'Kontras', min: 0, max: 200, icon: Contrast },
+                       { key: 'saturation', label: 'Saturasi', min: 0, max: 200, icon: Droplets },
+                     ].map(adj => {
+                       const val = (selectedClip as any)?.[adj.key] ?? 100;
+                       return (
+                         <div key={adj.key} className="space-y-4">
+                            <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/30">
+                               <span>{adj.label}</span>
+                               <span className="text-white">{Math.round(val)}%</span>
+                            </div>
+                            <input 
+                              type="range" min={adj.min} max={adj.max} step="1"
+                              value={val}
+                              onChange={(e) => handleUpdateClip(selectedClipId, { [adj.key]: parseFloat(e.target.value) })}
+                              className="w-full accent-white"
+                            />
+                         </div>
+                       );
+                     })}
+                   </div>
                 )}
-                {(activeTab === 'adjust' || activeTab === 'adjust-root') && selectedClipId && (
-                  <div className="space-y-8 py-4">
-                    <div className="flex w-full justify-end">
-                      <button 
-                        onClick={() => {
-                          handleUpdateClip(selectedClipId, { 
-                            brightness: 100, contrast: 100, saturation: 100, hue: 0, blur: 0 
-                          });
-                          pushToHistory(clips);
-                        }}
-                        className="text-[10px] font-black text-white/40 uppercase tracking-widest hover:text-white transition-colors"
-                      >
-                        Atur Ulang
-                      </button>
-                    </div>
-                    {[
-                      { key: 'brightness', label: 'Kecerahan', min: 0, max: 200, icon: Sun },
-                      { key: 'contrast', label: 'Kontras', min: 0, max: 200, icon: Contrast },
-                      { key: 'saturation', label: 'Saturasi', min: 0, max: 200, icon: Droplets },
-                      { key: 'hue', label: 'Rona', min: -180, max: 180, icon: Zap },
-                      { key: 'blur', label: 'Kabur', min: 0, max: 50, icon: Filter },
-                      { key: 'sharpen', label: 'Pertajam', min: 0, max: 100, icon: Target },
-                      { key: 'vignette', label: 'Vinyet', min: 0, max: 100, icon: Circle },
-                    ].map(adj => {
-                      const val = (clips.find(c => c.id === selectedClipId) as any)?.[adj.key] ?? (adj.key === 'hue' || adj.key === 'blur' || adj.key === 'sharpen' || adj.key === 'vignette' ? 0 : 100);
-                      return (
-                        <div key={adj.key} className="space-y-4">
-                           <div className="flex justify-between items-center">
-                              <div className="flex items-center gap-3">
-                                <div className="p-2 bg-white/5 rounded-lg">
-                                  <adj.icon className="w-4 h-4 text-white/60" />
-                                </div>
-                                <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">{adj.label}</span>
-                              </div>
-                              <span className="text-sm font-black font-mono text-white">
-                                {adj.key === 'hue' ? `${val}°` : adj.key === 'blur' ? `${val}px` : `${Math.round(val)}%`}
-                              </span>
-                           </div>
-                           <div className="relative group px-1">
-                             <input 
-                               type="range" min={adj.min} max={adj.max} step="1"
-                               value={val}
-                               onChange={(e) => handleUpdateClip(selectedClipId, { [adj.key]: parseFloat(e.target.value) })}
-                               onPointerUp={() => pushToHistory(clips)}
-                               className="w-full h-1.5 bg-white/5 rounded-full appearance-none accent-white cursor-pointer group-hover:bg-white/10 transition-colors"
-                             />
-                           </div>
-                        </div>
-                      );
-                    })}
-                  </div>
+                {activeTab === 'hsl' && selectedClipId && (
+                   <div className="space-y-6 py-4">
+                      <div className="flex gap-2 overflow-x-auto no-scrollbar pb-2">
+                         {(['red', 'orange', 'yellow', 'green', 'cyan', 'blue', 'purple', 'magenta'] as const).map(color => (
+                            <button 
+                              key={color}
+                              className={cn(
+                                "w-10 h-10 rounded-full border-2 transition-all flex-shrink-0",
+                                color === 'red' ? "bg-red-500" :
+                                color === 'orange' ? "bg-orange-500" :
+                                color === 'yellow' ? "bg-yellow-400" :
+                                color === 'green' ? "bg-green-500" :
+                                color === 'cyan' ? "bg-cyan-400" :
+                                color === 'blue' ? "bg-blue-600" :
+                                color === 'purple' ? "bg-purple-600" : "bg-pink-600",
+                                "border-white/10 hover:scale-110 active:scale-95"
+                              )}
+                            />
+                         ))}
+                      </div>
+                      <div className="space-y-8">
+                         {[
+                           { label: 'Rona (Hue)', key: 'h', min: -100, max: 100 },
+                           { label: 'Saturasi', key: 's', min: -100, max: 100 },
+                           { label: 'Terang (Lightness)', key: 'l', min: -100, max: 100 },
+                         ].map(param => (
+                            <div key={param.key} className="space-y-4">
+                               <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/30">
+                                  <span>{param.label}</span>
+                                  <span className="text-white">0</span>
+                               </div>
+                               <input type="range" min={param.min} max={param.max} className="w-full h-1.5 bg-white/10 rounded-full appearance-none accent-white" />
+                            </div>
+                         ))}
+                      </div>
+                   </div>
                 )}
-                {activeTab === 'audio-fade' && selectedClipId && (
-                  <div className="space-y-12 py-4">
-                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Luntur Masuk</span>
-                           <span className="text-sm font-mono text-white">{((clips.find(c => c.id === selectedClipId) as any)?.fadeInDuration ?? 0).toFixed(1)}s</span>
-                        </div>
-                        <input 
-                          type="range" min="0" max="5" step="0.1"
-                          value={(clips.find(c => c.id === selectedClipId) as any)?.fadeInDuration ?? 0}
-                          onChange={(e) => handleUpdateClip(selectedClipId, { fadeInDuration: parseFloat(e.target.value) })}
-                          onPointerUp={() => pushToHistory(clips)}
-                          className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                        />
-                     </div>
-                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Luntur Keluar</span>
-                           <span className="text-sm font-mono text-white">{((clips.find(c => c.id === selectedClipId) as any)?.fadeOutDuration ?? 0).toFixed(1)}s</span>
-                        </div>
-                        <input 
-                          type="range" min="0" max="5" step="0.1"
-                          value={(clips.find(c => c.id === selectedClipId) as any)?.fadeOutDuration ?? 0}
-                          onChange={(e) => handleUpdateClip(selectedClipId, { fadeOutDuration: parseFloat(e.target.value) })}
-                          onPointerUp={() => pushToHistory(clips)}
-                          className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                        />
-                     </div>
-                  </div>
+                {activeTab === 'mask' && selectedClipId && (
+                   <div className="grid grid-cols-2 gap-4 py-4">
+                      {[
+                        { id: 'none', label: 'Tidak Ada', icon: X },
+                        { id: 'linear', label: 'Linear', icon: Minus },
+                        { id: 'circle', label: 'Lingkaran', icon: Circle },
+                        { id: 'rectangle', label: 'Kotak', icon: Square },
+                        { id: 'heart', label: 'Hati', icon: Smile },
+                        { id: 'star', label: 'Bintang', icon: Zap },
+                      ].map(mask => (
+                         <button 
+                           key={mask.id}
+                           onClick={() => handleUpdateClip(selectedClipId, { maskType: mask.id as any })}
+                           className={cn(
+                             "flex flex-col items-center gap-4 p-6 rounded-2xl border transition-all",
+                             selectedClip?.maskType === mask.id ? "bg-white text-black border-white" : "bg-white/5 border-white/5 text-white/30"
+                           )}
+                         >
+                            {mask.icon && <mask.icon className="w-8 h-8" />}
+                            <span className="text-[10px] font-black uppercase tracking-widest">{mask.label}</span>
+                         </button>
+                      ))}
+                   </div>
+                )}
+                {activeTab === 'speed-curve' && selectedClipId && (
+                   <div className="space-y-6 py-4">
+                      <div className="grid grid-cols-2 gap-3">
+                         {[
+                           { id: 'none', label: 'Default' },
+                           { id: 'montage', label: 'Montase' },
+                           { id: 'hero', label: 'Hero' },
+                           { id: 'bullet', label: 'Peluru' },
+                           { id: 'flash-in', label: 'Flash In' },
+                           { id: 'flash-out', label: 'Flash Out' },
+                         ].map(curve => (
+                            <button 
+                              key={curve.id}
+                              onClick={() => handleUpdateClip(selectedClipId, { speedCurve: curve.id as any })}
+                              className={cn(
+                                "py-8 rounded-2xl border flex flex-col items-center justify-center gap-3 transition-all",
+                                selectedClip?.speedCurve === curve.id ? "bg-white text-black border-white shadow-lg" : "bg-white/5 border-white/5 text-white/30 hover:bg-white/10"
+                              )}
+                            >
+                               <div className="w-12 h-6 border-2 border-current opacity-20 rounded-lg flex items-center justify-center">
+                                  <div className="w-full h-[2px] bg-current transform rotate-12" />
+                               </div>
+                               <span className="text-[10px] font-black uppercase tracking-widest">{curve.label}</span>
+                            </button>
+                         ))}
+                      </div>
+                   </div>
+                )}
+                {activeTab === 'filters-edit' && selectedClipId && (
+                   <div className="grid grid-cols-3 gap-4 pb-8">
+                     {(['none', 'grayscale', 'sepia', 'vintage', 'cold'] as const).map(f => (
+                        <button 
+                          key={f}
+                          onClick={() => handleUpdateClip(selectedClipId, { filter: f })}
+                          className={cn(
+                            "flex flex-col gap-2 transition-all",
+                            selectedClip?.filter === f ? "opacity-100" : "opacity-40"
+                          )}
+                        >
+                           <div className="aspect-square bg-white/10 rounded-xl overflow-hidden border border-white/10">
+                              <div className={cn("w-full h-full bg-gradient-to-br from-purple-500 to-pink-500", f !== 'none' ? f : "")} />
+                           </div>
+                           <span className="text-[8px] font-black uppercase text-center">{f}</span>
+                        </button>
+                     ))}
+                   </div>
                 )}
                 {activeTab === 'blend' && selectedClipId && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-4">
-                       <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Mode Campuran</label>
-                       <div className="grid grid-cols-3 gap-3">
-                          {[
-                            'normal', 'multiply', 'screen', 'overlay', 'darken', 'lighten', 'color-dodge', 'color-burn', 'hard-light', 'soft-light', 'difference', 'exclusion'
-                          ].map(mode => (
-                            <button
-                              key={mode}
-                              onClick={() => {
-                                handleUpdateClip(selectedClipId, { blendMode: mode as any });
-                                pushToHistory(clips);
-                              }}
-                              className={cn(
-                                "py-3 rounded-lg border text-[8px] font-black uppercase tracking-widest transition-all",
-                                clips.find(c => c.id === selectedClipId)?.blendMode === mode || (!clips.find(c => c.id === selectedClipId)?.blendMode && mode === 'normal') 
-                                  ? "bg-white text-black border-white shadow-lg shadow-white/10" 
-                                  : "bg-white/5 text-white/40 border-white/5 hover:bg-white/10"
-                              )}
-                            >
-                              {mode}
-                            </button>
-                          ))}
-                       </div>
-                    </div>
-                    <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Opasitas</span>
-                           <span className="text-sm font-mono text-white">{Math.round((clips.find(c => c.id === selectedClipId)?.opacity ?? 1) * 100)}%</span>
-                        </div>
-                        <input 
-                          type="range" min="0" max="1" step="0.01"
-                          value={clips.find(c => c.id === selectedClipId)?.opacity ?? 1}
-                          onChange={(e) => handleUpdateClip(selectedClipId, { opacity: parseFloat(e.target.value) })}
-                          onPointerUp={() => pushToHistory(clips)}
-                          className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                        />
-                     </div>
-                  </div>
-                )}
-                {activeTab === 'stickers' && (
-                  <div className="grid grid-cols-4 gap-4 pb-8">
-                    {['🔥', '✨', '❤️', '😂', '💯', '🚀', '⭐', '🎈', '🎉', '🎸', '🎮', '💡', '✅', '❌', '⚠️', '💎', '🎨', '🎬', '📸', '🎵'].map((s, i) => (
-                      <button
-                        key={i}
-                        onClick={() => {
-                          const newId = Math.random().toString(36).substr(2, 9);
-                          const newClip: Clip = {
-                            id: newId,
-                            type: 'text',
-                            src: '',
-                            text: s,
-                            start: currentTime,
-                            duration: 2,
-                            trimStart: 0,
-                            speed: 1,
-                            layer: clips.length % 3 + 1,
-                            scale: 2,
-                            x: 0,
-                            y: 0,
-                            opacity: 1,
-                            keyframes: []
-                          };
-                          const updatedClips = [...clips, newClip];
-                          setClips(updatedClips);
-                          setSelectedClipId(newId);
-                          pushToHistory(updatedClips);
-                          setActiveTab('edit');
-                        }}
-                        className="aspect-square bg-white/10 rounded-2xl flex items-center justify-center text-4xl hover:bg-white/20 transition-all active:scale-90"
-                      >
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {activeTab === 'overlay' && (
-                  <div className="grid grid-cols-3 gap-2 pb-8">
-                    {Array.from({ length: 12 }).map((_, i) => (
-                      <button 
-                         key={i}
-                         onClick={() => {
-                            const newId = Math.random().toString(36).substr(2, 9);
-                            const newClip: Clip = {
-                              id: newId,
-                              type: i % 3 === 0 ? 'video' : 'photo',
-                              src: i % 2 === 0 
-                                ? 'https://images.unsplash.com/photo-1620336655055-088d06e36bf0?q=80&w=400&auto=format&fit=crop'
-                                : 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=400&auto=format&fit=crop',
-                              start: currentTime,
-                              duration: 3,
-                              trimStart: 0,
-                              speed: 1,
-                              layer: clips.length % 3 + 1,
-                              scale: 0.5,
-                              x: (i % 3 - 1) * 200,
-                              y: (Math.floor(i / 3) - 1) * 200,
-                              opacity: 1,
-                              keyframes: []
-                            };
-                            const updatedClips = [...clips, newClip];
-                            setClips(updatedClips);
-                            setSelectedClipId(newId);
-                            pushToHistory(updatedClips);
-                            setActiveTab('edit');
-                         }}
-                         className="aspect-square bg-white/5 border border-white/5 rounded-xl relative group overflow-hidden"
-                      >
-                         <img 
-                           src={i % 2 === 0 
-                             ? 'https://images.unsplash.com/photo-1620336655055-088d06e36bf0?q=80&w=100&auto=format&fit=crop'
-                             : 'https://images.unsplash.com/photo-1492691527719-9d1e07e534b4?q=80&w=100&auto=format&fit=crop'} 
-                           className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" 
-                           referrerPolicy="no-referrer"
+                   <div className="space-y-8 py-4">
+                      <div className="space-y-4">
+                         <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/30">
+                            <span>Opasitas</span>
+                            <span className="text-white">{Math.round((selectedClip?.opacity || 1) * 100)}%</span>
+                         </div>
+                         <input 
+                           type="range" min="0" max="1" step="0.01"
+                           value={selectedClip?.opacity || 1}
+                           onChange={(e) => handleUpdateClip(selectedClipId, { opacity: parseFloat(e.target.value) })}
+                           className="w-full accent-white"
                          />
-                         <div className="absolute bottom-1 right-1 text-[8px] font-bold bg-black/60 px-1 py-0.5 rounded">00:03</div>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {activeTab === 'text' && selectedClipId && (
-                  <div className="space-y-6">
-                    <div className="flex flex-col gap-2">
-                       <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Konten Teks</label>
-                       <input 
-                        type="text"
-                        value={clips.find(c => c.id === selectedClipId)?.text || ""}
-                        onChange={(e) => handleUpdateClip(selectedClipId, { text: e.target.value })}
-                        className="w-full bg-white/5 border border-white/10 p-4 rounded-xl text-white outline-none focus:border-white/40 transition-colors"
-                        placeholder="Ketik sesuatu..."
-                       />
-                    </div>
-                    <div className="flex flex-col gap-3">
-                       <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Gaya Teks</label>
-                       <div className="grid grid-cols-2 gap-3">
-                          {[
-                            { id: 'bold-white', label: 'Tebal Putih' },
-                            { id: 'white-shadow', label: 'Bayangan' },
-                            { id: 'black-shadow', label: 'Kontras' },
-                            { id: 'glow', label: 'Bercahaya' }
-                          ].map(style => (
-                            <button
-                              key={style.id}
-                              onClick={() => handleUpdateClip(selectedClipId, { textStyle: style.id as any })}
-                              className={cn(
-                                "p-3 rounded-lg border text-[10px] font-black uppercase tracking-widest transition-all",
-                                clips.find(c => c.id === selectedClipId)?.textStyle === style.id ? "bg-white text-black border-white" : "bg-white/5 text-white/40 border-white/5"
-                              )}
-                            >
-                              {style.label}
-                            </button>
-                          ))}
-                       </div>
-                    </div>
-                  </div>
-                )}
-                {activeTab === 'filters' && selectedClipId && (
-                  <div className="grid grid-cols-3 gap-4">
-                    {[
-                      { id: 'none', label: 'Asli', class: '' },
-                      { id: 'grayscale', label: 'Hitam Putih', class: 'grayscale' },
-                      { id: 'sepia', label: 'Klasik', class: 'sepia' },
-                      { id: 'vintage', label: 'Vintaj', class: 'sepia brightness-75 contrast-125' },
-                      { id: 'cold', label: 'Dingin', class: 'hue-rotate-180 brightness-90 saturate-150' },
-                    ].map(f => (
-                      <button
-                        key={f.id}
-                        onClick={() => handleUpdateClip(selectedClipId, { filter: f.id as any })}
-                        className={cn(
-                          "flex flex-col gap-2 transition-all",
-                          clips.find(c => c.id === selectedClipId)?.filter === f.id ? "opacity-100 scale-105" : "opacity-40 hover:opacity-100"
-                        )}
-                      >
-                        <div className={cn("aspect-square w-full rounded-xl bg-white/10 overflow-hidden border-2", clips.find(c => c.id === selectedClipId)?.filter === f.id ? "border-white" : "border-transparent")}>
-                           <div className={cn("w-full h-full bg-gradient-to-br from-purple-500 to-pink-500", f.class)} />
-                        </div>
-                        <span className="text-[10px] font-black uppercase tracking-tighter text-center">{f.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {activeTab === 'canvas' && selectedClipId && (
-                  <div className="space-y-8">
-                     <div className="grid grid-cols-2 gap-4">
-                        <button
-                          onClick={() => handleUpdateClip(selectedClipId, { backgroundMode: 'blur' })}
-                          className={cn(
-                            "flex flex-col items-center gap-4 p-6 rounded-2xl border transition-all",
-                            clips.find(c => c.id === selectedClipId)?.backgroundMode === 'blur' ? "bg-white/10 border-white text-white" : "bg-white/5 border-white/5 text-white/30"
-                          )}
-                        >
-                          <Layers className="w-8 h-8" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Kabur</span>
-                        </button>
-                        <button
-                          onClick={() => handleUpdateClip(selectedClipId, { backgroundMode: 'color' })}
-                          className={cn(
-                            "flex flex-col items-center gap-4 p-6 rounded-2xl border transition-all",
-                            clips.find(c => c.id === selectedClipId)?.backgroundMode === 'color' ? "bg-white/10 border-white text-white" : "bg-white/5 border-white/5 text-white/30"
-                          )}
-                        >
-                          <Sliders className="w-8 h-8" />
-                          <span className="text-[10px] font-black uppercase tracking-widest">Warna</span>
-                        </button>
-                     </div>
-                  </div>
-                )}
-                {activeTab === 'effects' && selectedClipId && (
-                  <div className="grid grid-cols-2 gap-4 pb-8">
-                    {[
-                      { id: 'zoom-blur', label: 'Zoom Blur', icon: Sparkles },
-                      { id: 'shake', label: 'Guncang', icon: Sparkles },
-                      { id: 'mirror', label: 'Cermin', icon: Layers },
-                      { id: 'glitch', label: 'Gangguan', icon: Sparkles },
-                    ].map(effect => (
-                      <button
-                        key={effect.id}
-                        onClick={() => {
-                          handleUpdateClip(selectedClipId, { filter: effect.id as any });
-                          pushToHistory(clips);
-                        }}
-                        className={cn(
-                          "p-6 rounded-2xl border flex flex-col items-center gap-4 transition-all",
-                          clips.find(c => c.id === selectedClipId)?.filter === effect.id ? "bg-white/10 border-white text-white" : "bg-white/5 border-white/5 text-white/30"
-                        )}
-                      >
-                        <effect.icon className="w-8 h-8" />
-                        <span className="text-[10px] font-black uppercase tracking-widest">{effect.label}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-                {activeTab === 'transition' && selectedClipId && (
-                  <div className="space-y-8 py-4">
-                     <div className="grid grid-cols-4 gap-3">
-                        {[
-                          { id: 'none', label: 'None' },
-                          { id: 'fade', label: 'Pudar' },
-                          { id: 'black', label: 'Hitam' },
-                          { id: 'white', label: 'Putih' },
-                          { id: 'slide-left', label: 'Geser Kiri' },
-                          { id: 'slide-right', label: 'Geser Kanan' },
-                          { id: 'zoom', label: 'Zum' },
-                          { id: 'blur', label: 'Kabur' }
-                        ].map(t => (
-                          <button
-                            key={t.id}
-                            onClick={() => handleUpdateClip(selectedClipId, { transitionType: t.id as any })}
-                            className={cn(
-                              "flex flex-col items-center justify-center aspect-square rounded-xl border text-[8px] font-black uppercase transition-all",
-                              clips.find(c => c.id === selectedClipId)?.transitionType === t.id ? "bg-white text-black border-white" : "bg-white/5 text-white/30 border-white/5"
-                            )}
-                          >
-                            <div className="w-6 h-6 rounded-full bg-current opacity-20 mb-2" />
-                            {t.label}
-                          </button>
-                        ))}
-                     </div>
-                     <div className="space-y-4">
-                        <div className="flex justify-between items-center">
-                           <span className="text-[10px] font-black uppercase text-white/30 tracking-widest">Durasi Transisi</span>
-                           <span className="text-sm font-mono text-white">{(clips.find(c => c.id === selectedClipId)?.transitionDuration ?? 0.5).toFixed(1)}s</span>
-                        </div>
-                        <input 
-                          type="range" min="0.1" max="2" step="0.1"
-                          value={clips.find(c => c.id === selectedClipId)?.transitionDuration ?? 0.5}
-                          onChange={(e) => handleUpdateClip(selectedClipId, { transitionDuration: parseFloat(e.target.value) })}
-                          onPointerUp={() => pushToHistory(clips)}
-                          className="w-full h-2 bg-white/10 rounded-full appearance-none accent-white"
-                        />
-                     </div>
-                  </div>
-                )}
-                {activeTab === 'keyframes' && selectedClipId && (
-                  <KeyframePanel 
-                    clip={clips.find(c => c.id === selectedClipId)!}
-                    currentTime={currentTime}
-                    onUpdateKeyframe={handleUpdateKeyframe}
-                    onRemoveKeyframe={handleRemoveKeyframe}
-                  />
+                      </div>
+                   </div>
                 )}
               </div>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Export Overlay */}
+      <AnimatePresence>
+        {showExportDrawer && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 md:p-8"
+          >
+             <motion.div 
+               initial={{ scale: 0.9, opacity: 0, y: 20 }}
+               animate={{ scale: 1, opacity: 1, y: 0 }}
+               exit={{ scale: 0.95, opacity: 0, y: 10 }}
+               className="w-full max-w-[900px] bg-[#111] rounded-[32px] overflow-hidden border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row h-[600px] relative"
+             >
+                <button 
+                  onClick={() => setShowExportDrawer(false)}
+                  className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-all z-20"
+                >
+                   <X className="w-5 h-5" />
+                </button>
+
+                {/* Left: Preview */}
+                <div className="flex-1 bg-black p-8 flex flex-col items-center justify-center gap-8 relative group">
+                  <div className={cn(
+                    "relative shadow-2xl transition-all duration-700",
+                    aspectRatio === '16:9' ? 'aspect-video w-full' : 
+                    aspectRatio === '9:16' ? 'aspect-[9/16] h-[400px]' : 'aspect-square h-[350px]'
+                  )}>
+                     <div className="absolute inset-0 bg-[#222] rounded-lg animate-pulse" />
+                     <img 
+                       src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop" 
+                       className="w-full h-full object-cover rounded-lg relative z-10"
+                       referrerPolicy="no-referrer"
+                     />
+                     <div className="absolute inset-0 z-20 flex items-center justify-center">
+                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
+                           <Play className="w-6 h-6 text-white fill-white ml-1" />
+                        </div>
+                     </div>
+                  </div>
+                  <div className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em]">Pratinjau Ekspor</div>
+                </div>
+
+                {/* Right: Settings */}
+                <div className="w-full md:w-[350px] bg-[#111] border-l border-white/5 p-10 flex flex-col">
+                   <h2 className="text-2xl font-black text-white italic tracking-tighter mb-10 flex items-center gap-3">
+                      <div className="w-2 h-8 bg-[#00c2cb]" />
+                      EKSPOR PRO
+                   </h2>
+
+                   <div className="flex-1 space-y-10">
+                      <div className="space-y-4">
+                         <label className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] flex items-center gap-2">
+                           <Settings className="w-3.5 h-3.5" />
+                           Resolusi
+                         </label>
+                         <div className="grid grid-cols-2 gap-3">
+                            {['720p', '1080p', '2K', '4K'].map(res => (
+                              <button 
+                                key={res}
+                                onClick={() => setExportRes(res)}
+                                className={cn(
+                                  "py-3 rounded-xl border text-[11px] font-bold transition-all",
+                                  exportRes === res ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]" : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
+                                )}
+                              >
+                                {res}
+                              </button>
+                            ))}
+                         </div>
+                      </div>
+
+                      <div className="space-y-4">
+                         <label className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] flex items-center gap-2">
+                           <Zap className="w-3.5 h-3.5" />
+                           Laju Bingkai
+                         </label>
+                         <div className="grid grid-cols-3 gap-3">
+                            {[24, 30, 60].map(fps => (
+                              <button 
+                                key={fps}
+                                onClick={() => setExportFps(fps)}
+                                className={cn(
+                                  "py-3 rounded-xl border text-[11px] font-bold transition-all",
+                                  exportFps === fps ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]" : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
+                                )}
+                              >
+                                {fps} <span className="text-[8px] font-normal opacity-60">fps</span>
+                              </button>
+                            ))}
+                         </div>
+                      </div>
+
+                      <div className="p-5 bg-white/5 rounded-[20px] border border-white/5 space-y-2">
+                         <div className="flex justify-between items-center text-[10px] font-bold">
+                            <span className="text-white/30 italic uppercase">Estimasi Ukuran</span>
+                            <span className="text-white">~45.2 MB</span>
+                         </div>
+                         <div className="flex justify-between items-center text-[10px] font-bold">
+                            <span className="text-white/30 italic uppercase">Durasi Total</span>
+                            <span className="text-white">{formatTime(totalDuration)}</span>
+                         </div>
+                      </div>
+                   </div>
+
+                   <div className="mt-10 pt-10 border-t border-white/5">
+                      <button 
+                        onClick={handleExport}
+                        disabled={isExporting}
+                        className="relative w-full h-16 bg-[#00c2cb] hover:bg-[#00dae4] rounded-2xl flex items-center justify-center overflow-hidden transition-all active:scale-95 group shadow-[0_20px_40px_rgba(0,194,203,0.2)]"
+                      >
+                         {isExporting ? (
+                           <div className="absolute inset-0 bg-white/20 origin-left" style={{ width: `${exportProgress}%`, transition: 'width 0.1s linear' }} />
+                         ) : null}
+                         <span className={cn(
+                           "relative z-10 text-white font-black uppercase tracking-[0.4em] transition-all",
+                           isExporting ? "scale-90 opacity-60 text-xs" : "group-hover:scale-105"
+                         )}>
+                           {isExporting ? `Mengekspor ${exportProgress}%` : 'Mulai Ekspor'}
+                         </span>
+                      </button>
+                   </div>
+                </div>
+             </motion.div>
           </motion.div>
         )}
       </AnimatePresence>
