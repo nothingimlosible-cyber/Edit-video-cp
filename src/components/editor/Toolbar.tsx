@@ -92,6 +92,7 @@ export default function Toolbar({
               activeTab === tool.id ? "text-white" : "text-[#999] hover:text-white"
             )}
             onClick={() => {
+              if (window.navigator.vibrate) window.navigator.vibrate(10);
               if (tool.id === 'back') onTabChange('main');
               else if (tool.id === 'split') onSplit();
               else if (tool.id === 'keyframe') onToggleKeyframe?.();

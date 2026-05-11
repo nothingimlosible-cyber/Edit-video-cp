@@ -126,7 +126,7 @@ export default function Timeline({
       }
 
       if (!isSnapped && window.navigator.vibrate) {
-        window.navigator.vibrate(isInnerPoint ? [50, 40, 50] : [20, 10, 20]); // Heavy pulse for inner edge
+        window.navigator.vibrate(isInnerPoint ? 15 : 10); 
       }
       setIsSnapped(true);
     } else {
@@ -315,9 +315,15 @@ export default function Timeline({
                 </div>
               )}
 
-              {Array.from({ length: Math.ceil(duration) * 2 + 1 }).map((_, i) => {
-                const time = i * 0.5;
-                const isWholeSecond = i % 2 === 0;
+              {Array.from({ length: Math.ceil(duration) * 10 + 1 }).map((_, i) => {
+                const time = i * 0.1;
+                const isWholeSecond = i % 10 === 0;
+                const isHalfSecond = i % 5 === 0;
+                
+                // PERFORMANCE: Don't render tiny ticks if they are too close (very zoomed out)
+                if (pixelsPerSecond < 40 && !isHalfSecond) return null;
+                if (pixelsPerSecond < 20 && !isWholeSecond) return null;
+
                 return (
                   <div 
                     key={i} 
@@ -326,7 +332,8 @@ export default function Timeline({
                   >
                     <div className={cn(
                       "w-[1px] md:w-[1.5px] transition-all",
-                      isWholeSecond ? "h-3 md:h-4 bg-white/40" : "h-1.5 md:h-2 bg-white/15"
+                      isWholeSecond ? "h-3.5 md:h-5 bg-white/40" : 
+                      isHalfSecond ? "h-2 md:h-3 bg-white/20" : "h-1 md:h-1.5 bg-white/10"
                     )} />
                     {isWholeSecond && (
                       <span className="absolute bottom-1.5 md:bottom-2 text-[7px] md:text-[8px] font-black font-mono text-white/40 tracking-tighter translate-y-6 select-none">

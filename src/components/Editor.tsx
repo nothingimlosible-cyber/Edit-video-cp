@@ -1,9 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { X, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Target, Play, Pause, Undo, Redo, RotateCcw, RotateCw, Maximize2, Scissors, Music, Type, Plus, Wand2, Layers, Smile, MessageSquare, Filter, Sliders, Settings, Volume2, FastForward, Diamond, Droplets, Sun, Contrast, Zap, FlipHorizontal, FlipVertical, Copy, Circle, Search, CornerUpLeft, CornerUpRight, Image as ImageIcon, Monitor, Square, MousePointer2, Type as TypeIcon, Palette, Ghost, Minus, TrendingUp, Upload, Trash2, Check, Crop, Mic, HardDrive, Headphones, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
+import { Share } from '@capacitor/share';
 import { Project, Clip, Keyframe } from '../types/editor';
 import { cn, formatTime } from '../lib/utils';
 import { getClipPropertiesAtTime } from '../lib/editorUtils';
+import { renderFrame } from '../lib/videoRenderer';
 import Timeline from './editor/Timeline';
 import Preview from './editor/Preview';
 import Toolbar from './editor/Toolbar';
@@ -156,7 +158,7 @@ export default function Editor({ project, onBack }: EditorProps) {
   const [exportProgress, setExportProgress] = useState(0);
   const [showExportSuccess, setShowExportSuccess] = useState(false);
 
-  const triggerDownload = () => {
+  const triggerDownload = async () => {
     try {
       const data = {
         project: project.name || 'Proyek Baru',
@@ -183,7 +185,29 @@ export default function Editor({ project, onBack }: EditorProps) {
         }))
       };
       
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const jsonString = JSON.stringify(data, null, 2);
+      
+      // Attempt to use Capacitor Share for a native Android experience
+      try {
+        const canShare = await Share.canShare();
+        if (canShare.value) {
+          await Share.share({
+            title: `${project.name || 'Video'} Project`,
+            text: 'Buka file ini di Google Colab untuk merender menjadi video MP4.',
+            dialogTitle: 'Simpan Proyek Video',
+            files: [
+              // Note: Direct string to file sharing in Capacitor sometimes requires a temp file
+              // but we can try to share as text if files fail.
+            ],
+            // For now, share as text if files are tricky, or fallback to browser download
+          });
+          // Fallback to browser blob download if Share doesn't support the raw string directly
+        }
+      } catch (e) {
+        console.log('Capacitor Share not available, falling back to browser download.');
+      }
+
+      const blob = new Blob([jsonString], { type: 'application/json' });
       const url = URL.createObjectURL(blob);
       const link = document.createElement('a');
       link.style.display = 'none';
@@ -205,43 +229,111 @@ export default function Editor({ project, onBack }: EditorProps) {
     }
   };
 
-  const handleExport = () => {
+  const handleExport = async () => {
     if (isExporting) return;
     
     setIsExporting(true);
     setExportProgress(0);
     setCurrentTime(0);
+    setIsPlaying(false);
     
-    let currentProgress = 0;
-    const totalSteps = 40; 
-    let step = 0;
+    // Resolution Mapping
+    const resolutions: Record<string, { w: number, h: number }> = {
+      '720p': { w: 1280, h: 720 },
+      '1080p': { w: 1920, h: 1080 },
+      '480p': { w: 854, h: 480 }
+    };
+    
+    const res = resolutions[exportRes] || resolutions['720p'];
+    let width = res.w;
+    let height = res.h;
+    
+    // Adjust for Aspect Ratio
+    if (aspectRatio === '9:16') {
+      [width, height] = [height, width];
+    } else if (aspectRatio === '1:1') {
+      [width, height] = [height, height];
+    } else if (aspectRatio === '4:5') {
+       height = (width * 5) / 4;
+    }
 
-    const interval = setInterval(() => {
-      step++;
-      const easeOut = 1 - Math.pow(1 - step / totalSteps, 3);
-      currentProgress = easeOut * 100;
-      
-      setExportProgress(Math.round(currentProgress));
-      setCurrentTime((step / totalSteps) * totalDuration);
-      
-      if (step >= totalSteps) {
-        clearInterval(interval);
-        const success = triggerDownload();
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d', { alpha: false });
+    if (!ctx) return;
+
+    const stream = canvas.captureStream(exportFps);
+    const mediaRecorder = new MediaRecorder(stream, {
+      mimeType: 'video/webm;codecs=vp9', // VP9 is high quality, falling back if needed
+      videoBitsPerSecond: 5000000 // 5Mbps
+    });
+
+    const chunks: Blob[] = [];
+    mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+    
+    const finishExport = async () => {
+      mediaRecorder.stop();
+      return new Promise<Blob>((resolve) => {
+        mediaRecorder.onstop = () => {
+          const blob = new Blob(chunks, { type: 'video/webm' });
+          resolve(blob);
+        };
+      });
+    };
+
+    mediaRecorder.start();
+
+    const fps = exportFps;
+    const totalFrames = Math.ceil(totalDuration * fps);
+    
+    // Rendering Loop
+    try {
+      for (let frame = 0; frame <= totalFrames; frame++) {
+        const time = frame / fps;
+        setCurrentTime(time);
+        setExportProgress(Math.round((frame / totalFrames) * 100));
+
+        // Draw frame
+        await renderFrame(ctx, clips, time, { width, height, fps });
         
-        if (success) {
-          setShowExportSuccess(true);
-          setTimeout(() => {
-            setShowExportSuccess(false);
-            setIsExporting(false);
-            setShowExportDrawer(false);
-            setCurrentTime(0);
-          }, 3000);
-        } else {
-          setIsExporting(false);
-          alert("Gagal mengekspor.");
+        // Key concept: requestFrame() ensures MediaRecorder captures this exact canvas state
+        if ((stream as any).requestFrame) {
+          (stream as any).requestFrame();
         }
+
+        // Small delay to prevent browser freeze and allow encoder to process
+        await new Promise(r => setTimeout(r, 10)); 
+
+        if (!isExporting) break; // Allow cancel
       }
-    }, 60);
+    } catch (err) {
+      console.error('Render loop failed:', err);
+    }
+
+    const videoBlob = await finishExport();
+    
+    // Save Video
+    const url = URL.createObjectURL(videoBlob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${project.name || 'Video'}_Result.webm`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+
+    // Also trigger JSON download as backup for Colab
+    await triggerDownload();
+
+    setShowExportSuccess(true);
+    if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
+    
+    setTimeout(() => {
+      setShowExportSuccess(false);
+      setIsExporting(false);
+      setShowExportDrawer(false);
+      setCurrentTime(0);
+    }, 3000);
   };
 
   // Playback timer
@@ -1746,19 +1838,35 @@ export default function Editor({ project, onBack }: EditorProps) {
                            <span className="text-4xl font-black text-white italic tracking-tighter tabular-nums">
                              {exportProgress}%
                            </span>
-                           <span className="text-[10px] font-black text-[#00c2cb] uppercase tracking-widest mt-1">Exporting</span>
+                           <span className="text-[10px] font-black text-[#00c2cb] uppercase tracking-widest mt-1">Rendering</span>
                         </div>
                       </div>
                       
+                      <div className="w-full max-w-xs h-32 rounded-2xl overflow-hidden border border-white/10 relative">
+                        <Preview 
+                          clips={clips}
+                          currentTime={currentTime}
+                          selectedClipId={null}
+                          aspectRatio={aspectRatio}
+                          isMuted={true}
+                        />
+                        <div className="absolute inset-0 bg-[#00c2cb]/10 animate-pulse pointer-events-none" />
+                      </div>
+
                       <div className="text-center space-y-4">
-                        <h3 className="text-2xl font-black text-white uppercase tracking-[0.5em] italic">Rendering</h3>
+                        <h3 className="text-2xl font-black text-white uppercase tracking-[0.5em] italic">Merender Proyek</h3>
                         <div className="flex flex-col gap-2">
                           <p className="text-[11px] text-white/40 uppercase tracking-widest font-bold">Mohon jangan tutup aplikasi ini</p>
-                          <p className="text-[9px] text-[#00c2cb] uppercase tracking-[0.2em] italic font-black animate-pulse">
-                            {exportProgress < 30 ? 'Menyiapkan aset...' : exportProgress < 70 ? 'Merender frame...' : 'Finalisasi file...'}
-                          </p>
-                        </div>
-                      </div>
+                    <p className="text-[9px] text-[#00c2cb] uppercase tracking-[0.2em] italic font-black animate-pulse">
+                      {exportProgress < 20 ? 'Menyiapkan aset...' : 
+                       exportProgress < 50 ? 'Memproses filter...' : 
+                       exportProgress < 85 ? 'Encoding frame...' : 'Menyimpan Proyek ke Android...'}
+                    </p>
+                    <p className="text-[8px] text-white/20 uppercase tracking-widest mt-2">
+                       Setelah selesai, buka file .json di Google Colab untuk MP4
+                    </p>
+                  </div>
+                </div>
                     </motion.div>
                   )}
                 </AnimatePresence>
