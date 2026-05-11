@@ -105,6 +105,7 @@ interface PreviewProps {
   currentTime: number;
   selectedClipId: string | null;
   aspectRatio: AspectRatio;
+  canvasColor?: string;
   isPlaying?: boolean;
   isMuted?: boolean;
   isTransforming?: boolean;
@@ -118,6 +119,7 @@ export default function Preview({
   currentTime, 
   selectedClipId, 
   aspectRatio, 
+  canvasColor = '#000000',
   isPlaying, 
   isMuted,
   isTransforming,
@@ -182,9 +184,10 @@ export default function Preview({
   return (
     <div 
       className={cn(
-        "relative bg-black shadow-2xl rounded-sm overflow-hidden flex items-center justify-center transition-all duration-300 cursor-pointer border border-white/20",
+        "relative shadow-2xl rounded-sm overflow-hidden flex items-center justify-center transition-all duration-300 cursor-pointer border border-white/20",
         getAspectRatioClasses()
       )}
+      style={{ backgroundColor: canvasColor }}
       onClick={onTogglePlay}
     >
       {/* Aspect Ratio Grid Guide */}

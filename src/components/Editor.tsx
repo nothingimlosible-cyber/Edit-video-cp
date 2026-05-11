@@ -137,6 +137,7 @@ export default function Editor({ project, onBack }: EditorProps) {
     : 0;
 
   const [aspectRatio, setAspectRatio] = useState<Project['aspectRatio']>(project.aspectRatio);
+  const [canvasColor, setCanvasColor] = useState<string>('#000000');
   const [activeTab, setActiveTab] = useState<string>('edit');
   const [transformTab, setTransformTab] = useState<'posisi' | 'zoom' | 'putar'>('posisi');
   const [showSubMenu, setShowSubMenu] = useState(false);
@@ -185,11 +186,9 @@ export default function Editor({ project, onBack }: EditorProps) {
       document.body.appendChild(link);
       link.click();
       
-      // Clean up after a delay
-      setTimeout(() => {
-        document.body.removeChild(link);
-        URL.revokeObjectURL(url);
-      }, 100);
+      document.body.removeChild(link);
+      // Don't revoke immediately on some mobile browsers
+      setTimeout(() => URL.revokeObjectURL(url), 1000);
       
       return true;
     } catch (err) {
@@ -748,8 +747,8 @@ export default function Editor({ project, onBack }: EditorProps) {
       {/* 2. MAIN LAYOUT (Header -> Preview -> Toolbar -> Timeline) */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         
-        {/* TOP HALF: Preview Area (70%) */}
-        <div className="flex-[7] flex flex-col min-h-0 bg-black">
+        {/* TOP HALF: Preview Area (65%) */}
+        <div className="flex-[6.5] flex flex-col min-h-0 bg-black">
           
           {/* Preview Viewport */}
           <div className="flex-1 flex flex-col relative min-w-0 bg-[#050505] overflow-hidden">
@@ -757,12 +756,13 @@ export default function Editor({ project, onBack }: EditorProps) {
              <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,194,203,0.02)_0%,transparent_70%)] pointer-events-none" />
                 
-                <div className="w-full h-full p-2 md:p-6 relative flex items-center justify-center">
+                <div className="w-full h-full p-4 md:p-10 relative flex items-center justify-center">
                   <Preview 
                     clips={clips} 
                     currentTime={currentTime} 
                     selectedClipId={selectedClipId} 
                     aspectRatio={aspectRatio}
+                    canvasColor={canvasColor}
                     isPlaying={isPlaying}
                     isMuted={isMuted}
                     isTransforming={activeTab === 'transform'}
@@ -773,12 +773,12 @@ export default function Editor({ project, onBack }: EditorProps) {
                 </div>
              </div>
               {/* Toolbar: Preview Controls Bar (Maximize, Play, Undo/Redo) - CapCut Standar (10%) */}
-             <div className="flex-shrink-0 h-[50px] border-t border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl flex items-center justify-between px-2 mt-5">
+             <div className="flex-shrink-0 h-[44px] border-t border-white/5 bg-[#0a0a0a]/80 backdrop-blur-xl flex items-center justify-between px-2">
                 <button 
                   onClick={() => editorRef.current?.requestFullscreen()}
                   className="w-[42px] h-[42px] flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90"
                 >
-                  <Maximize2 className="w-6 h-6 rotate-45" />
+                  <Maximize2 className="w-5 h-5 rotate-45" />
                 </button>
                 
                 <button 
@@ -972,9 +972,9 @@ export default function Editor({ project, onBack }: EditorProps) {
                 </div>
               )}
 
-              <div className="flex-1 overflow-y-auto no-scrollbar p-[14px] bg-gradient-to-b from-[#080808] to-black">
+              <div className="flex-1 overflow-y-auto scroll-smooth no-scrollbar p-[14px] bg-gradient-to-b from-[#080808] to-black">
                 {activeTab === 'transform' && selectedClipId && (
-                  <div className="flex flex-col h-full">
+                  <div className="flex flex-col h-full scroll-smooth">
                     {/* Transform Header */}
                     <div className="flex items-center justify-between mb-4 px-2">
                        <span className="text-[13px] font-black uppercase tracking-widest text-[#00c2cb]">Dasar</span>
@@ -1233,7 +1233,7 @@ export default function Editor({ project, onBack }: EditorProps) {
                   </div>
                 )}
                 {activeTab === 'canvas' && (
-                  <div className="space-y-8 py-4 px-2">
+                  <div className="space-y-8 py-4 px-2 scroll-smooth">
                     <div className="grid grid-cols-2 gap-4">
                       <button 
                         onClick={() => {
@@ -1242,7 +1242,7 @@ export default function Editor({ project, onBack }: EditorProps) {
                             pushToHistory(clipsRef.current);
                           }
                         }}
-                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 hover:text-white"
+                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 hover:text-white active:scale-95"
                       >
                         <Crop className="w-8 h-8" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Paskan (Fit)</span>
@@ -1254,7 +1254,7 @@ export default function Editor({ project, onBack }: EditorProps) {
                             pushToHistory(clipsRef.current);
                           }
                         }}
-                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 hover:text-white"
+                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 hover:text-white active:scale-95"
                       >
                         <Maximize2 className="w-8 h-8" />
                         <span className="text-[10px] font-black uppercase tracking-widest">Isi (Fill)</span>
@@ -1264,10 +1264,14 @@ export default function Editor({ project, onBack }: EditorProps) {
                     <div className="space-y-4">
                        <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Warna Latar</label>
                        <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
-                          {['#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'].map(color => (
+                          {['#000000', '#ffffff', '#ff3b30', '#4cd964', '#007aff', '#ffcc00', '#ff9500', '#5856d6', '#ff2d55'].map(color => (
                             <button 
                               key={color}
-                              className="w-10 h-10 rounded-full border-2 border-white/10 transition-all hover:scale-110"
+                              onClick={() => setCanvasColor(color)}
+                              className={cn(
+                                "w-10 h-10 rounded-full border-2 transition-all hover:scale-110 active:scale-90 flex-shrink-0",
+                                canvasColor === color ? "border-[#00c2cb] scale-110 shadow-[0_0_15px_rgba(0,194,203,0.4)]" : "border-white/10"
+                              )}
                               style={{ backgroundColor: color }}
                             />
                           ))}
