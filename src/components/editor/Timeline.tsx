@@ -272,10 +272,10 @@ export default function Timeline({
                             if (onTabChange) onTabChange('transition');
                           }}
                           className={cn(
-                            "absolute z-[40] w-3.5 h-3.5 rounded-sm flex items-center justify-center transition-all -translate-x-1/2 shadow-lg",
+                            "absolute z-[160] w-6 h-6 rounded-full flex items-center justify-center transition-all -translate-x-1/2 shadow-[0_4px_12px_rgba(0,0,0,0.5)] active:scale-95 group",
                             nextClip.transitionType && nextClip.transitionType !== 'none'
-                              ? "bg-white border border-neutral-400"
-                              : "bg-white/90 border border-neutral-300"
+                              ? "bg-white border-2 border-[#00c2cb] scale-110"
+                              : "bg-white/90 border border-neutral-300 hover:bg-white hover:scale-110"
                           )}
                           style={{
                             left: `${(clip.start + clip.duration) * pixelsPerSecond}px`
@@ -283,12 +283,13 @@ export default function Timeline({
                           title="Transition"
                         >
                           {nextClip.transitionType && nextClip.transitionType !== 'none' ? (
-                            <div className="flex gap-0.5">
-                              <div className="w-0.5 h-2.5 bg-[#4f46e5] rounded-full" />
-                              <div className="w-0.5 h-2.5 bg-[#4f46e5] rounded-full" />
+                            <div className="flex gap-[2px]">
+                               <div className="w-[3px] h-[3px] rounded-full bg-[#00c2cb]" />
+                               <div className="w-[3px] h-[3px] rounded-full bg-[#00c2cb]" />
+                               <div className="w-[3px] h-[3px] rounded-full bg-[#00c2cb]" />
                             </div>
                           ) : (
-                            <div className="w-0.5 h-3 bg-neutral-600 rounded-full" />
+                            <Plus className="w-3.5 h-3.5 text-neutral-800" />
                           )}
                         </button>
                       )}

@@ -52,7 +52,7 @@ export interface Clip {
   animationOut?: 'none' | 'fade' | 'slide-right' | 'slide-down' | 'zoom' | 'black-flash' | 'white-flash' | 'sun-flare' | 'blur-fade' | 'rotate-zoom';
   animationInDuration?: number;
   animationOutDuration?: number;
-  transitionType?: 'none' | 'fade' | 'black' | 'white' | 'slide-left' | 'slide-right' | 'zoom' | 'blur';
+  transitionType?: 'none' | 'fade' | 'black' | 'white' | 'slide-left' | 'slide-right' | 'slide-up' | 'slide-down' | 'zoom' | 'zoom-out' | 'blur' | 'glitch';
   transitionDuration?: number;
   fadeInDuration?: number;
   fadeOutDuration?: number;

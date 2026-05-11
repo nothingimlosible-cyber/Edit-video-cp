@@ -131,7 +131,7 @@ export default function Preview({
 
   // Find visible clips
   const visibleClips = clips.filter(
-    (clip) => currentTime >= clip.start && currentTime <= clip.start + clip.duration
+    (clip) => currentTime >= clip.start && currentTime < clip.start + clip.duration
   ).sort((a, b) => a.layer - b.layer);
 
   const getAspectRatioClasses = () => {
@@ -149,21 +149,67 @@ export default function Preview({
   };
 
   const getAnimationProps = (clip: Clip) => {
-    const initialProps: any = { opacity: 0 };
-    const exitProps: any = { opacity: 0 };
+    let initialProps: any = { opacity: 0 };
+    let exitProps: any = { opacity: 0 };
+    let transitionProps: any = { 
+      duration: clip.animationInDuration || 0.4,
+      ease: "easeOut"
+    };
 
-    switch (clip.animationIn) {
-      case 'fade': initialProps.opacity = 0; break;
-      case 'slide-left': initialProps.x = -100; initialProps.opacity = 0; break;
-      case 'slide-up': initialProps.y = 100; initialProps.opacity = 0; break;
-      case 'zoom': initialProps.scale = 0.5; initialProps.opacity = 0; break;
-      case 'black-flash': initialProps.filter = 'brightness(0)'; initialProps.opacity = 0; break;
-      case 'white-flash': initialProps.filter = 'brightness(5)'; initialProps.opacity = 0; break;
-      case 'sun-flare': initialProps.filter = 'brightness(3) sepia(0.5) hue-rotate(-20deg)'; initialProps.opacity = 0; break;
-      case 'swing': initialProps.rotate = -15; initialProps.opacity = 0; break;
-      case 'bounce': initialProps.scale = 0.3; initialProps.opacity = 0; break;
-      case 'blur-fade': initialProps.filter = 'blur(20px)'; initialProps.opacity = 0; break;
-      case 'rotate-zoom': initialProps.rotate = -45; initialProps.scale = 0.2; initialProps.opacity = 0; break;
+    // Global transitions for Layer 0 (between clips)
+    if (clip.layer === 0 && clip.transitionType && clip.transitionType !== 'none') {
+      transitionProps.duration = clip.transitionDuration || 0.5;
+      
+      switch (clip.transitionType) {
+        case 'fade': 
+          initialProps = { opacity: 0 }; 
+          break;
+        case 'black': 
+          initialProps = { opacity: 0, filter: 'brightness(0)' }; 
+          break;
+        case 'white': 
+          initialProps = { opacity: 0, filter: 'brightness(5)' }; 
+          break;
+        case 'slide-left': 
+          initialProps = { x: '100%', opacity: 1 }; 
+          break;
+        case 'slide-right': 
+          initialProps = { x: '-100%', opacity: 1 }; 
+          break;
+        case 'slide-up': 
+          initialProps = { y: '100%', opacity: 1 }; 
+          break;
+        case 'slide-down': 
+          initialProps = { y: '-100%', opacity: 1 }; 
+          break;
+        case 'zoom': 
+          initialProps = { scale: 0, opacity: 0 }; 
+          break;
+        case 'zoom-out': 
+          initialProps = { scale: 2, opacity: 0 }; 
+          break;
+        case 'blur': 
+          initialProps = { filter: 'blur(30px)', opacity: 0 }; 
+          break;
+        case 'glitch': 
+          initialProps = { skew: 20, opacity: 0, filter: 'hue-rotate(90deg)' }; 
+          break;
+      }
+    } else {
+      // Individual animation in
+      switch (clip.animationIn) {
+        case 'fade': initialProps.opacity = 0; break;
+        case 'slide-left': initialProps.x = -100; initialProps.opacity = 0; break;
+        case 'slide-up': initialProps.y = 100; initialProps.opacity = 0; break;
+        case 'zoom': initialProps.scale = 0.5; initialProps.opacity = 0; break;
+        case 'black-flash': initialProps.filter = 'brightness(0)'; initialProps.opacity = 0; break;
+        case 'white-flash': initialProps.filter = 'brightness(5)'; initialProps.opacity = 0; break;
+        case 'sun-flare': initialProps.filter = 'brightness(3) sepia(0.5) hue-rotate(-20deg)'; initialProps.opacity = 0; break;
+        case 'swing': initialProps.rotate = -15; initialProps.opacity = 0; break;
+        case 'bounce': initialProps.scale = 0.3; initialProps.opacity = 0; transitionProps = { type: 'spring', stiffness: 300, damping: 15 }; break;
+        case 'blur-fade': initialProps.filter = 'blur(20px)'; initialProps.opacity = 0; break;
+        case 'rotate-zoom': initialProps.rotate = -45; initialProps.scale = 0.2; initialProps.opacity = 0; break;
+      }
     }
     
     switch (clip.animationOut) {
@@ -178,7 +224,7 @@ export default function Preview({
       case 'rotate-zoom': exitProps.rotate = 45; exitProps.scale = 0.2; exitProps.opacity = 0; break;
     }
 
-    return { initialProps, exitProps };
+    return { initialProps, exitProps, transitionProps };
   };
 
   return (
@@ -210,7 +256,7 @@ export default function Preview({
         {visibleClips.length > 0 ? (
           visibleClips.map((clip) => {
             const props = getClipPropertiesAtTime(clip, currentTime);
-            const { initialProps, exitProps } = getAnimationProps(clip);
+            const { initialProps, exitProps, transitionProps } = getAnimationProps(clip);
             
             return (
               <motion.div
@@ -222,19 +268,15 @@ export default function Preview({
                   x: (props.x ?? 0),
                   y: (props.y ?? 0),
                   rotate: props.rotation || 0,
-                  filter: clip.animationIn === 'blur-fade' || clip.animationOut === 'blur-fade' ? 'blur(0px)' : 'none'
+                  filter: (clip.animationIn === 'blur-fade' || clip.animationOut === 'blur-fade' || clip.transitionType === 'blur') ? 'blur(0px)' : 
+                          (clip.transitionType === 'glitch') ? 'hue-rotate(0deg)' : 'none',
+                  skew: (clip.transitionType === 'glitch') ? 0 : 0
                 }}
                 exit={{
                   ...exitProps,
                   transition: { duration: clip.animationOutDuration || 0.4 }
                 }}
-                transition={{ 
-                  type: clip.animationIn === 'bounce' ? 'spring' : 'tween',
-                  stiffness: clip.animationIn === 'bounce' ? 300 : 100,
-                  damping: clip.animationIn === 'bounce' ? 15 : 20,
-                  duration: clip.animationInDuration || 0.4,
-                  ease: "easeOut"
-                }}
+                transition={transitionProps}
                 onPointerDown={(e) => {
                   if (selectedClipId !== clip.id) return;
                   const el = e.currentTarget;

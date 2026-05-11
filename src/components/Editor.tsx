@@ -346,7 +346,7 @@ export default function Editor({ project, onBack }: EditorProps) {
     let nextClips = clips.filter(c => c.id !== targetClipId);
     let finalClips = [...nextClips, firstHalf, secondHalf];
     
-    // Magnetic Logic: Ensure no gaps on Layer 0 (Primary Track)
+    // Magnetic Logic: Ensure no gaps and NO OVERLAPS on Layer 0 (Primary Track)
     if (clip.layer === 0) {
       const layer0 = finalClips.filter(c => c.layer === 0).sort((a, b) => a.start - b.start);
       let cumulativeStart = 0;
@@ -366,7 +366,7 @@ export default function Editor({ project, onBack }: EditorProps) {
     
     setClips(finalClips);
     pushToHistory(finalClips);
-    setSelectedClipId(secondHalf.id); // Select the second part immediately for further splitting
+    setSelectedClipId(secondHalf.id); 
   };
 
   const handleAddMedia = () => {
@@ -393,12 +393,25 @@ export default function Editor({ project, onBack }: EditorProps) {
     const type = file.type.startsWith('video') ? 'video' : file.type.startsWith('image') ? 'photo' : file.type.startsWith('audio') ? 'audio' : 'video';
     
     const addClipWithDuration = (detectedDuration: number) => {
-      const lastClipOnMainTrack = clips
-        .filter(c => c.layer === 0)
-        .reduce((max, clip) => Math.max(max, clip.start + clip.duration), 0);
-
       const isMainTrack = uploadType === 'video';
-      const startTime = isMainTrack ? lastClipOnMainTrack : currentTime;
+      
+      let startTime = currentTime;
+      let targetLayer = isMainTrack ? 0 : 1;
+
+      // For Main Track (Layer 0), we use magnetic insertion
+      if (isMainTrack) {
+        // Find if we are inserting between clips or at the end
+        const layer0 = clips.filter(c => c.layer === 0).sort((a, b) => a.start - b.start);
+        const insertAfterIndex = layer0.findIndex(c => currentTime < c.start + c.duration);
+        
+        if (insertAfterIndex === -1) {
+          // Append at the end of track
+          startTime = layer0.reduce((max, clip) => Math.max(max, clip.start + clip.duration), 0);
+        } else {
+          // Insert at current time and shift subsequent clips
+          startTime = currentTime;
+        }
+      }
 
       const newClip: Clip = {
         id: Date.now().toString(),
@@ -409,7 +422,7 @@ export default function Editor({ project, onBack }: EditorProps) {
         duration: detectedDuration,
         trimStart: 0,
         speed: 1,
-        layer: type === 'audio' ? -1 : uploadType === 'photo' ? 1 : 0,
+        layer: type === 'audio' ? -1 : targetLayer,
         scale: (type === 'photo' && uploadType === 'photo') ? 0.5 : 1,
         x: 0,
         y: 0,
@@ -420,7 +433,38 @@ export default function Editor({ project, onBack }: EditorProps) {
         animationOut: 'none'
       };
 
-      const nextClips = [...clips, newClip].sort((a, b) => a.start - b.start);
+      let nextClips = [...clips, newClip];
+
+      // Re-apply Magnetic Logic if added to Layer 0
+      if (newClip.layer === 0) {
+        const layer0 = nextClips.filter(c => c.layer === 0).sort((a, b) => a.start - b.start);
+        let cumulativeStart = 0;
+        const updatedLayer0 = layer0.map(c => {
+          const updated = { ...c, start: cumulativeStart };
+          cumulativeStart += c.duration;
+          return updated;
+        });
+        nextClips = nextClips.map(c => c.layer === 0 ? (updatedLayer0.find(u => u.id === c.id) || c) : c);
+      } else if (newClip.layer > 0) {
+        // For overlays, if they overlap on the same layer, move to next free layer
+        let currentLayer = newClip.layer;
+        let hasOverlap = true;
+        while (hasOverlap) {
+          const overlap = nextClips.find(c => 
+            c.id !== newClip.id && 
+            c.layer === currentLayer && 
+            newClip.start < c.start + c.duration && 
+            newClip.start + newClip.duration > c.start
+          );
+          if (overlap) {
+            currentLayer++;
+          } else {
+            hasOverlap = false;
+          }
+        }
+        newClip.layer = currentLayer;
+      }
+
       setClips(nextClips);
       pushToHistory(nextClips);
       setSelectedClipId(newClip.id);
@@ -450,6 +494,21 @@ export default function Editor({ project, onBack }: EditorProps) {
   };
 
   const handleAddText = () => {
+    let targetLayer = 1;
+    let hasOverlap = true;
+    while (hasOverlap) {
+      const overlap = clips.find(c => 
+        c.layer === targetLayer && 
+        currentTime < c.start + c.duration && 
+        currentTime + 3 > c.start
+      );
+      if (overlap) {
+        targetLayer++;
+      } else {
+        hasOverlap = false;
+      }
+    }
+
     const newClip: Clip = {
       id: Date.now().toString(),
       type: 'text',
@@ -460,7 +519,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       duration: 3,
       trimStart: 0,
       speed: 1,
-      layer: 1, // Text defaults to layer 1
+      layer: targetLayer,
       scale: 1,
       x: 0,
       y: 0,
@@ -474,6 +533,21 @@ export default function Editor({ project, onBack }: EditorProps) {
   };
 
   const handleAddSticker = () => {
+    let targetLayer = 2;
+    let hasOverlap = true;
+    while (hasOverlap) {
+      const overlap = clips.find(c => 
+        c.layer === targetLayer && 
+        currentTime < c.start + c.duration && 
+        currentTime + 3 > c.start
+      );
+      if (overlap) {
+        targetLayer++;
+      } else {
+        hasOverlap = false;
+      }
+    }
+
     const newClip: Clip = {
       id: Date.now().toString(),
       type: 'photo',
@@ -483,7 +557,7 @@ export default function Editor({ project, onBack }: EditorProps) {
       duration: 3,
       trimStart: 0,
       speed: 1,
-      layer: 2,
+      layer: targetLayer,
       scale: 0.3,
       x: 50,
       y: 50,
@@ -1477,6 +1551,67 @@ export default function Editor({ project, onBack }: EditorProps) {
                          </button>
                       ))}
                    </div>
+                )}
+                {activeTab === 'transition' && selectedClipId && (
+                  <div className="space-y-6 py-4">
+                    <div className="grid grid-cols-4 gap-3">
+                      {[
+                        { id: 'none', label: 'Tiada', icon: X },
+                        { id: 'fade', label: 'Dissolve', color: 'bg-white/10' },
+                        { id: 'black', label: 'Ke Hitam', color: 'bg-black border border-white/10' },
+                        { id: 'white', label: 'Ke Putih', color: 'bg-white' },
+                        { id: 'slide-left', label: 'Geser Kiri', color: 'bg-blue-500/20' },
+                        { id: 'slide-right', label: 'Geser Kanan', color: 'bg-blue-500/20' },
+                        { id: 'slide-up', label: 'Geser Atas', color: 'bg-blue-500/20' },
+                        { id: 'slide-down', label: 'Geser Bawah', color: 'bg-blue-500/20' },
+                        { id: 'zoom', label: 'Zoom In', color: 'bg-purple-500/20' },
+                        { id: 'zoom-out', label: 'Zoom Out', color: 'bg-purple-500/20' },
+                        { id: 'blur', label: 'Blur', color: 'bg-teal-500/20' },
+                        { id: 'glitch', label: 'Glitch', color: 'bg-red-500/20' },
+                      ].map(trans => (
+                        <button
+                          key={trans.id}
+                          onClick={() => handleUpdateClip(selectedClipId, { 
+                            transitionType: trans.id as any,
+                            transitionDuration: 0.5 
+                          })}
+                          className={cn(
+                            "group flex flex-col items-center gap-3 transition-all active:scale-95",
+                            selectedClip?.transitionType === trans.id ? "opacity-100" : "opacity-40 hover:opacity-100"
+                          )}
+                        >
+                           <div className={cn(
+                             "w-full aspect-square rounded-2xl flex items-center justify-center transition-all border",
+                             selectedClip?.transitionType === trans.id ? "border-[#00c2cb] ring-4 ring-[#00c2cb]/20" : "border-white/5",
+                             trans.color || "bg-white/5"
+                           )}>
+                              {trans.icon ? <trans.icon className="w-8 h-8 text-white" /> : <div className="w-8 h-1 rounded-full bg-white/20" />}
+                           </div>
+                           <span className={cn(
+                             "text-[9px] font-black uppercase text-center tracking-tighter transition-colors",
+                             selectedClip?.transitionType === trans.id ? "text-[#00c2cb]" : "text-white/40 group-hover:text-white"
+                           )}>
+                             {trans.label}
+                           </span>
+                        </button>
+                      ))}
+                    </div>
+
+                    {selectedClip?.transitionType && selectedClip.transitionType !== 'none' && (
+                      <div className="space-y-4 px-2 mt-4 pt-4 border-t border-white/5">
+                        <div className="flex justify-between items-center text-[10px] font-black uppercase text-white/30">
+                           <span>Durasi Transisi</span>
+                           <span className="text-white">{(selectedClip?.transitionDuration || 0.5).toFixed(1)}s</span>
+                        </div>
+                        <input 
+                          type="range" min="0.1" max="2.0" step="0.1"
+                          value={selectedClip?.transitionDuration || 0.5}
+                          onChange={(e) => handleUpdateClip(selectedClipId, { transitionDuration: parseFloat(e.target.value) })}
+                          className="w-full accent-[#00c2cb] h-1.5 bg-white/10 rounded-full appearance-none"
+                        />
+                      </div>
+                    )}
+                  </div>
                 )}
                 {activeTab === 'speed-curve' && selectedClipId && (
                    <div className="space-y-6 py-4">
