@@ -204,20 +204,22 @@ export default function Editor({ project, onBack }: EditorProps) {
     setIsExporting(true);
     setExportProgress(0);
     
-    // Simulate complex processing
+    // Real simulation logic
     let currentProgress = 0;
+    const totalSteps = 20; // More steps for realism
+    let step = 0;
+
     const interval = setInterval(() => {
-      // Procedural progress for realism
-      const remaining = 100 - currentProgress;
-      const step = Math.random() * (remaining * 0.2) + 2;
-      currentProgress = Math.min(currentProgress + step, 100);
+      step++;
+      // Nonlinear progress for "rendering" feel
+      const easeOut = 1 - Math.pow(1 - step / totalSteps, 2);
+      currentProgress = easeOut * 100;
       
       setExportProgress(Math.round(currentProgress));
       
-      if (currentProgress >= 100) {
+      if (step >= totalSteps) {
         clearInterval(interval);
         
-        // Finalize
         setTimeout(() => {
           const success = triggerDownload();
           setIsExporting(false);
@@ -227,11 +229,14 @@ export default function Editor({ project, onBack }: EditorProps) {
             setTimeout(() => {
               setShowExportSuccess(false);
               setShowExportDrawer(false);
+              
+              // Hint to user about the file type
+              alert("Proyek berhasil diekspor! Simpan file .json ini. Fitur render MP4 langsung akan segera hadir di update berikutnya.");
             }, 2000);
           }
-        }, 500);
+        }, 800);
       }
-    }, 150);
+    }, 250);
   };
 
   // Playback timer
@@ -292,21 +297,29 @@ export default function Editor({ project, onBack }: EditorProps) {
 
   const handleSplit = () => {
     let targetClipId = selectedClipId;
+    const selected = clips.find(c => c.id === targetClipId);
     
-    // If selected clip is NOT under playhead or no selection, find what is under playhead
-    const clipAtPlayhead = clips.find(c => c.layer === 0 && currentTime >= c.start && currentTime < c.start + c.duration);
+    // Check if current selected clip is under playhead
+    const isUnderPlayhead = selected && currentTime > selected.start && currentTime < selected.start + selected.duration;
     
-    if (!targetClipId || (clipAtPlayhead && targetClipId !== clipAtPlayhead.id && (currentTime < (clips.find(c => c.id === targetClipId)?.start || 0) || currentTime > (clips.find(c => c.id === targetClipId)?.start || 0) + (clips.find(c => c.id === targetClipId)?.duration || 0)))) {
-       if (clipAtPlayhead) targetClipId = clipAtPlayhead.id;
+    if (!isUnderPlayhead) {
+      // Find deepest layer clip under playhead
+      const clipUnderPlayhead = [...clips]
+        .filter(c => currentTime > c.start && currentTime < c.start + c.duration)
+        .sort((a, b) => b.layer - a.layer)[0];
+      
+      if (clipUnderPlayhead) {
+        targetClipId = clipUnderPlayhead.id;
+      } else {
+        return;
+      }
     }
 
-    if (!targetClipId) return;
     const clip = clips.find(c => c.id === targetClipId);
     if (!clip) return;
 
     const relativeTime = currentTime - clip.start;
-    // Allow very small splits if needed, but guard against logic errors
-    if (relativeTime < 0.01 || relativeTime > clip.duration - 0.01) return;
+    if (relativeTime < 0.1 || relativeTime > clip.duration - 0.1) return;
 
     const speedAdjustedRelative = relativeTime * clip.speed;
 
@@ -735,16 +748,16 @@ export default function Editor({ project, onBack }: EditorProps) {
       {/* 2. MAIN LAYOUT (Header -> Preview -> Toolbar -> Timeline) */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         
-        {/* TOP HALF: Preview Area (60%) */}
-        <div className="flex-[6] flex flex-col min-h-0 bg-black pt-4">
+        {/* TOP HALF: Preview Area (70%) */}
+        <div className="flex-[7] flex flex-col min-h-0 bg-black">
           
           {/* Preview Viewport */}
-          <div className="flex-1 flex flex-col relative min-w-0 bg-[#080808] overflow-hidden">
+          <div className="flex-1 flex flex-col relative min-w-0 bg-[#050505] overflow-hidden">
              {/* Preview Content */}
              <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden">
-                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,194,203,0.03)_0%,transparent_70%)] pointer-events-none" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,194,203,0.02)_0%,transparent_70%)] pointer-events-none" />
                 
-                <div className="w-[90%] max-w-[320px] aspect-[9/16] relative flex items-center justify-center">
+                <div className="w-full h-full p-2 md:p-6 relative flex items-center justify-center">
                   <Preview 
                     clips={clips} 
                     currentTime={currentTime} 
@@ -1215,6 +1228,49 @@ export default function Editor({ project, onBack }: EditorProps) {
                        <div className="flex items-center gap-2 text-white/20">
                           <Headphones className="w-4 h-4" />
                           <span className="text-[10px] font-bold uppercase tracking-widest">Gunakan Audio Berlisensi</span>
+                       </div>
+                    </div>
+                  </div>
+                )}
+                {activeTab === 'canvas' && (
+                  <div className="space-y-8 py-4 px-2">
+                    <div className="grid grid-cols-2 gap-4">
+                      <button 
+                        onClick={() => {
+                          if (selectedClipId) {
+                            handleUpdateClip(selectedClipId, { scale: 1, x: 0, y: 0 });
+                            pushToHistory(clipsRef.current);
+                          }
+                        }}
+                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 hover:text-white"
+                      >
+                        <Crop className="w-8 h-8" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Paskan (Fit)</span>
+                      </button>
+                      <button 
+                        onClick={() => {
+                          if (selectedClipId) {
+                            handleUpdateClip(selectedClipId, { scale: 1.8, x: 0, y: 0 });
+                            pushToHistory(clipsRef.current);
+                          }
+                        }}
+                        className="flex flex-col items-center gap-3 p-6 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all text-white/60 hover:text-white"
+                      >
+                        <Maximize2 className="w-8 h-8" />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Isi (Fill)</span>
+                      </button>
+                    </div>
+                    
+                    <div className="space-y-4">
+                       <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Warna Latar</label>
+                       <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+                          {['#000000', '#ffffff', '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#ff00ff', '#00ffff'].map(color => (
+                            <button 
+                              key={color}
+                              className="w-10 h-10 rounded-full border-2 border-white/10 transition-all hover:scale-110"
+                              style={{ backgroundColor: color }}
+                            />
+                          ))}
                        </div>
                     </div>
                   </div>
