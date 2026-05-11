@@ -153,51 +153,85 @@ export default function Editor({ project, onBack }: EditorProps) {
   const [exportFps, setExportFps] = useState(30);
   const [isExporting, setIsExporting] = useState(false);
   const [exportProgress, setExportProgress] = useState(0);
+  const [showExportSuccess, setShowExportSuccess] = useState(false);
 
   const triggerDownload = () => {
-    const data = {
-      project: project.name,
-      clipsCount: clips.length,
-      duration: totalDuration,
-      aspectRatio,
-      resolution: exportRes,
-      fps: exportFps,
-      timestamp: new Date().toISOString(),
-      clips: clips.map(c => ({ id: c.id, type: c.type, duration: c.duration, filter: c.filter }))
-    };
-    
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${project.name.replace(/\s+/g, '_')}_final_video.mov`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    try {
+      const data = {
+        project: project.name,
+        clipsCount: clips.length,
+        duration: totalDuration,
+        aspectRatio,
+        resolution: exportRes,
+        fps: exportFps,
+        timestamp: new Date().toISOString(),
+        clips: clips.map(c => ({ 
+          id: c.id, 
+          type: c.type, 
+          duration: c.duration, 
+          start: c.start,
+          layer: c.layer,
+          filter: c.filter 
+        }))
+      };
+      
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.style.display = 'none';
+      link.href = url;
+      link.download = `${project.name.replace(/[^\w\s-]/gi, '').replace(/\s+/g, '_')}_export_${Date.now()}.json`;
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      // Clean up after a delay
+      setTimeout(() => {
+        document.body.removeChild(link);
+        URL.revokeObjectURL(url);
+      }, 100);
+      
+      return true;
+    } catch (err) {
+      console.error('Export failed:', err);
+      return false;
+    }
   };
 
   const handleExport = () => {
+    if (isExporting) return;
+    
     setIsExporting(true);
     setExportProgress(0);
     
-    const duration = 2000; // 2 seconds simulation
-    const startTime = Date.now();
-    
+    // Simulate complex processing
+    let currentProgress = 0;
     const interval = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(Math.round((elapsed / duration) * 100), 100);
-      setExportProgress(progress);
+      // Procedural progress for realism
+      const remaining = 100 - currentProgress;
+      const step = Math.random() * (remaining * 0.2) + 2;
+      currentProgress = Math.min(currentProgress + step, 100);
       
-      if (progress === 100) {
+      setExportProgress(Math.round(currentProgress));
+      
+      if (currentProgress >= 100) {
         clearInterval(interval);
+        
+        // Finalize
         setTimeout(() => {
+          const success = triggerDownload();
           setIsExporting(false);
-          triggerDownload();
-          setShowExportDrawer(false);
-        }, 300);
+          
+          if (success) {
+            setShowExportSuccess(true);
+            setTimeout(() => {
+              setShowExportSuccess(false);
+              setShowExportDrawer(false);
+            }, 2000);
+          }
+        }, 500);
       }
-    }, 100);
+    }, 150);
   };
 
   // Playback timer
@@ -690,9 +724,10 @@ export default function Editor({ project, onBack }: EditorProps) {
           </button>
           <button 
             onClick={() => setShowExportDrawer(true)}
-            className="p-1.5 text-white active:scale-90 transition-all"
+            className="flex items-center gap-2 px-4 py-1.5 bg-[#00c2cb] hover:bg-[#00dae4] text-white rounded-full active:scale-90 transition-all shadow-[0_0_15px_rgba(0,194,203,0.2)]"
           >
-             <Upload className="w-5 h-5 text-white/80" />
+             <Upload className="w-4 h-4 text-white font-bold" />
+             <span className="text-[11px] font-black uppercase tracking-widest leading-none mt-0.5">Ekspor</span>
           </button>
         </div>
       </header>
@@ -1454,16 +1489,31 @@ export default function Editor({ project, onBack }: EditorProps) {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/90 backdrop-blur-sm p-4 md:p-8"
+            className="fixed inset-0 z-[1000] flex items-center justify-center bg-black/95 backdrop-blur-md p-4 md:p-8"
           >
+             {/* Toast Success */}
+             <AnimatePresence>
+               {showExportSuccess && (
+                 <motion.div 
+                   initial={{ y: -50, opacity: 0 }}
+                   animate={{ y: 0, opacity: 1 }}
+                   exit={{ y: -50, opacity: 0 }}
+                   className="absolute top-10 left-1/2 -translate-x-1/2 z-[1100] bg-[#00c2cb] px-6 py-3 rounded-full flex items-center gap-3 shadow-[0_10px_30px_rgba(0,194,203,0.4)]"
+                 >
+                   <Check className="w-5 h-5 text-white" />
+                   <span className="text-sm font-black uppercase text-white tracking-widest">Ekspor Berhasil!</span>
+                 </motion.div>
+               )}
+             </AnimatePresence>
+
              <motion.div 
-               initial={{ scale: 0.9, opacity: 0, y: 20 }}
+               initial={{ scale: 0.9, opacity: 0, y: 50 }}
                animate={{ scale: 1, opacity: 1, y: 0 }}
-               exit={{ scale: 0.95, opacity: 0, y: 10 }}
-               className="w-full max-w-[900px] bg-[#111] rounded-[32px] overflow-hidden border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.8)] flex flex-col md:flex-row h-[600px] relative"
+               exit={{ scale: 0.95, opacity: 0, y: 20 }}
+               className="w-full max-w-[950px] bg-[#0c0c0c] rounded-[40px] overflow-hidden border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col md:flex-row h-[90vh] max-h-[650px] relative"
              >
                 <button 
-                  onClick={() => setShowExportDrawer(false)}
+                  onClick={() => !isExporting && setShowExportDrawer(false)}
                   className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-all z-20"
                 >
                    <X className="w-5 h-5" />
@@ -1478,17 +1528,20 @@ export default function Editor({ project, onBack }: EditorProps) {
                   )}>
                      <div className="absolute inset-0 bg-[#222] rounded-lg animate-pulse" />
                      <img 
-                       src="https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop" 
-                       className="w-full h-full object-cover rounded-lg relative z-10"
+                       src={clips[0]?.src || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop"} 
+                       className="w-full h-full object-cover rounded-lg relative z-10 border border-white/10"
                        referrerPolicy="no-referrer"
                      />
                      <div className="absolute inset-0 z-20 flex items-center justify-center">
-                        <div className="w-12 h-12 bg-white/20 backdrop-blur-md rounded-full flex items-center justify-center">
-                           <Play className="w-6 h-6 text-white fill-white ml-1" />
+                        <div className="w-14 h-14 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center shadow-2xl">
+                           <Play className="w-7 h-7 text-white fill-white ml-1 opacity-80" />
                         </div>
                      </div>
                   </div>
-                  <div className="text-[10px] font-black uppercase text-white/20 tracking-[0.3em]">Pratinjau Ekspor</div>
+                  <div className="flex flex-col items-center gap-1 text-center">
+                    <span className="text-[11px] font-black uppercase text-white tracking-[0.4em]">{project.name}</span>
+                    <span className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em] italic">Siap untuk ekspor</span>
+                  </div>
                 </div>
 
                 {/* Right: Settings */}
@@ -1563,9 +1616,10 @@ export default function Editor({ project, onBack }: EditorProps) {
                            <div className="absolute inset-0 bg-white/20 origin-left" style={{ width: `${exportProgress}%`, transition: 'width 0.1s linear' }} />
                          ) : null}
                          <span className={cn(
-                           "relative z-10 text-white font-black uppercase tracking-[0.4em] transition-all",
+                           "relative z-10 text-white font-black uppercase tracking-[0.4em] transition-all flex items-center gap-3",
                            isExporting ? "scale-90 opacity-60 text-xs" : "group-hover:scale-105"
                          )}>
+                           {!isExporting && <Download className="w-5 h-5 text-white" />}
                            {isExporting ? `Mengekspor ${exportProgress}%` : 'Mulai Ekspor'}
                          </span>
                       </button>
