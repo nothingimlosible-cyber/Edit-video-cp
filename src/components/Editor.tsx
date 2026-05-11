@@ -205,13 +205,13 @@ export default function Editor({ project, onBack }: EditorProps) {
     
     // Real simulation logic
     let currentProgress = 0;
-    const totalSteps = 20; // More steps for realism
+    const totalSteps = 40; // More steps for smoother progress
     let step = 0;
 
     const interval = setInterval(() => {
       step++;
       // Nonlinear progress for "rendering" feel
-      const easeOut = 1 - Math.pow(1 - step / totalSteps, 2);
+      const easeOut = 1 - Math.pow(1 - step / totalSteps, 3);
       currentProgress = easeOut * 100;
       
       setExportProgress(Math.round(currentProgress));
@@ -221,21 +221,24 @@ export default function Editor({ project, onBack }: EditorProps) {
         
         setTimeout(() => {
           const success = triggerDownload();
-          setIsExporting(false);
           
           if (success) {
             setShowExportSuccess(true);
             setTimeout(() => {
+              setIsExporting(false);
               setShowExportSuccess(false);
               setShowExportDrawer(false);
               
               // Hint to user about the file type
-              alert("Proyek berhasil diekspor! Simpan file .json ini. Fitur render MP4 langsung akan segera hadir di update berikutnya.");
+              alert("Ekspor Berhasil! File project telah diunduh. Simpan file ini untuk mengunggahnya kembali nanti.");
             }, 2000);
+          } else {
+            setIsExporting(false);
+            alert("Gagal mengekspor. Silakan coba lagi.");
           }
         }, 800);
       }
-    }, 250);
+    }, 100); // Faster interval for responsiveness
   };
 
   // Playback timer
@@ -747,16 +750,16 @@ export default function Editor({ project, onBack }: EditorProps) {
       {/* 2. MAIN LAYOUT (Header -> Preview -> Toolbar -> Timeline) */}
       <div className="flex-1 flex flex-col overflow-hidden relative">
         
-        {/* TOP HALF: Preview Area (65%) */}
-        <div className="flex-[6.5] flex flex-col min-h-0 bg-black">
+        {/* TOP HALF: Preview Area (55%) */}
+        <div className="flex-[5.5] flex flex-col min-h-0 bg-black">
           
           {/* Preview Viewport */}
           <div className="flex-1 flex flex-col relative min-w-0 bg-[#050505] overflow-hidden">
              {/* Preview Content */}
-             <div className="flex-1 relative flex items-center justify-center p-0 overflow-hidden">
+             <div className="flex-[1] relative flex items-center justify-center p-0 overflow-hidden">
                 <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(0,194,203,0.02)_0%,transparent_70%)] pointer-events-none" />
                 
-                <div className="w-full h-full p-4 md:p-10 relative flex items-center justify-center">
+                <div className="w-full h-full p-6 md:p-10 lg:p-14 relative flex items-center justify-center translate-y-2">
                   <Preview 
                     clips={clips} 
                     currentTime={currentTime} 
@@ -1570,8 +1573,44 @@ export default function Editor({ project, onBack }: EditorProps) {
                initial={{ scale: 0.9, opacity: 0, y: 50 }}
                animate={{ scale: 1, opacity: 1, y: 0 }}
                exit={{ scale: 0.95, opacity: 0, y: 20 }}
-               className="w-full max-w-[950px] bg-[#0c0c0c] rounded-[40px] overflow-hidden border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col md:flex-row h-[90vh] max-h-[650px] relative"
+               className="w-full max-w-[950px] bg-[#0c0c0c] rounded-[40px] overflow-hidden border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col md:flex-row h-[90vh] md:h-[650px] relative"
              >
+                {/* Exporting Global Overlay */}
+                <AnimatePresence>
+                  {isExporting && (
+                    <motion.div 
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      className="absolute inset-0 z-[200] bg-black/95 backdrop-blur-2xl flex flex-col items-center justify-center gap-8 p-10"
+                    >
+                      <div className="relative w-44 h-44 flex items-center justify-center">
+                        <svg className="w-full h-full -rotate-90">
+                          <circle cx="88" cy="88" r="80" fill="none" stroke="white" strokeWidth="2" className="opacity-5" />
+                          <motion.circle 
+                            cx="88" cy="88" r="80" fill="none" stroke="#00c2cb" strokeWidth="4" 
+                            strokeDasharray={502} strokeDashoffset={502 * (1 - exportProgress / 100)}
+                            strokeLinecap="round" className="transition-all duration-300"
+                          />
+                        </svg>
+                        <div className="absolute flex flex-col items-center">
+                           <span className="text-4xl font-black text-white italic tracking-tighter tabular-nums">
+                             {exportProgress}%
+                           </span>
+                           <span className="text-[10px] font-black text-[#00c2cb] uppercase tracking-widest mt-1">Exporting</span>
+                        </div>
+                      </div>
+                      
+                      <div className="text-center space-y-4">
+                        <h3 className="text-2xl font-black text-white uppercase tracking-[0.5em] italic">Rendering</h3>
+                        <div className="flex flex-col gap-2">
+                          <p className="text-[11px] text-white/40 uppercase tracking-widest font-bold">Mohon jangan tutup aplikasi ini</p>
+                          <p className="text-[9px] text-[#00c2cb] uppercase tracking-[0.2em] italic font-black animate-pulse">Menyiapkan aset video...</p>
+                        </div>
+                      </div>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
                 <button 
                   onClick={() => !isExporting && setShowExportDrawer(false)}
                   className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-all z-20"
@@ -1605,13 +1644,13 @@ export default function Editor({ project, onBack }: EditorProps) {
                 </div>
 
                 {/* Right: Settings */}
-                <div className="w-full md:w-[350px] bg-[#111] border-l border-white/5 p-10 flex flex-col">
-                   <h2 className="text-2xl font-black text-white italic tracking-tighter mb-10 flex items-center gap-3">
+                <div className="w-full md:w-[350px] bg-[#111] border-l border-white/5 p-6 md:p-10 flex flex-col overflow-y-auto no-scrollbar">
+                   <h2 className="text-xl md:text-2xl font-black text-white italic tracking-tighter mb-6 md:mb-10 flex items-center gap-3">
                       <div className="w-2 h-8 bg-[#00c2cb]" />
                       EKSPOR PRO
                    </h2>
 
-                   <div className="flex-1 space-y-10">
+                   <div className="flex-1 space-y-8 md:space-y-10">
                       <div className="space-y-4">
                          <label className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] flex items-center gap-2">
                            <Settings className="w-3.5 h-3.5" />
