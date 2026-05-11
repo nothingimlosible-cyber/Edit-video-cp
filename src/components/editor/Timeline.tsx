@@ -75,17 +75,58 @@ export default function Timeline({
     let newTime = scrollLeft / pixelsPerSecond;
     
     // Magnetic Snap Logic - Increased threshold for "=|" feeling
-    const snapThresholdPx = 18; // radius in pixels
-    const snapPoints = Array.from(new Set(clips.flatMap(c => [c.start, c.start + c.duration])));
+    const snapThresholdPx = 28; // Massive radius in pixels for snapping
+    const stickyRadiusPx = 15;  // Deadzone where it "sticks" hard
     
+    // Prioritize selected clip's boundaries and its keyframes
+    const selectedClip = clips.find(c => c.id === selectedClipId);
+    const selectedClipBoundaries = selectedClip ? [selectedClip.start, selectedClip.start + selectedClip.duration] : [];
+    
+    // Add inner boundaries for selected clip (snapping inside the white handles)
+    const HANDLE_WIDTH_PX = 12; // Precise w-3 width
+    const selectedClipInnerBoundaries = selectedClip ? [
+      selectedClip.start + (HANDLE_WIDTH_PX / pixelsPerSecond),
+      selectedClip.start + selectedClip.duration - (HANDLE_WIDTH_PX / pixelsPerSecond)
+    ] : [];
+
+    const clipBoundaries = clips.flatMap(c => [c.start, c.start + c.duration]);
+    const selectedClipKeyframes = selectedClip?.keyframes?.map(kf => selectedClip.start + kf.time) || [];
+    
+    // Prioritize inner boundaries VERY highly by putting them first
+    const snapPoints = [
+      ...selectedClipInnerBoundaries,
+      ...selectedClipKeyframes,
+      ...clipBoundaries
+    ];
+    
+    // Find closest snap point
     const closestSnap = snapPoints.find(p => Math.abs(p * pixelsPerSecond - scrollLeft) < snapThresholdPx);
     
     if (closestSnap !== undefined) {
-      // If we weren't snapped yet, vibrate
-      if (!isSnapped && window.navigator.vibrate) {
-        window.navigator.vibrate(12);
+      const snapPosPx = closestSnap * pixelsPerSecond;
+      const distance = Math.abs(snapPosPx - scrollLeft);
+      
+      // EXTRA STICKY for selected clip inner points AND keyframes
+      const isSelectedPoint = 
+        selectedClipInnerBoundaries.includes(closestSnap) || 
+        selectedClipKeyframes.includes(closestSnap);
+
+      const isInnerPoint = selectedClipInnerBoundaries.includes(closestSnap);
+      // Even stronger sticking for the inner handle edge
+      const effectiveStickyRadius = isInnerPoint ? stickyRadiusPx * 4 : isSelectedPoint ? stickyRadiusPx * 2.5 : stickyRadiusPx;
+
+      // STICKY LOGIC: If very close, force the time to stick even if user scrolls slightly
+      if (distance < effectiveStickyRadius) {
+        newTime = closestSnap;
+      } else {
+        // Linear interpolation to make the snap "pull" you in
+        const pullFactor = 1 - (distance / snapThresholdPx);
+        newTime = (closestSnap * pullFactor) + (newTime * (1 - pullFactor));
       }
-      newTime = closestSnap;
+
+      if (!isSnapped && window.navigator.vibrate) {
+        window.navigator.vibrate(isInnerPoint ? [50, 40, 50] : [20, 10, 20]); // Heavy pulse for inner edge
+      }
       setIsSnapped(true);
     } else {
       setIsSnapped(false);
@@ -168,18 +209,35 @@ export default function Timeline({
       </div>
 
       <div className="flex-1 relative flex flex-col overflow-hidden">
-        {/* Playhead - exactly at the center of the container (GLOWING) */}
-      <div className="absolute top-0 bottom-0 left-1/2 w-[2px] z-[150] pointer-events-none"
-        style={{ backgroundColor: isSnapped ? '#ffffff' : 'rgba(255, 255, 255, 0.9)' }}
+      {/* Playhead - exactly at the center of the container (GLOWING) */}
+      <div className="absolute top-0 bottom-0 left-1/2 w-[2px] -ml-[1px] z-[150] pointer-events-none transition-transform"
+        style={{ 
+          backgroundColor: isSnapped ? '#00c2cb' : 'rgba(255, 255, 255, 0.9)',
+          boxShadow: isSnapped ? '0 0 25px #00c2cb, 0 0 50px rgba(0,194,203,0.5)' : 'none'
+        }}
       >
+        {/* SNAP GUIDE LINE: A very thin cyan line through the whole timeline when snapped */}
+        {isSnapped && (
+          <div className="absolute top-[-100vh] bottom-[-100vh] left-1/2 -ml-[0.5px] w-[1px] bg-[#00c2cb]/40 shadow-[0_0_12px_rgba(0,194,203,0.6)]" />
+        )}
+
         {/* Glow effect */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-full bg-white/20 blur-[6px]" />
+        <div className={cn(
+          "absolute top-0 left-1/2 -translate-x-1/2 w-6 h-full transition-all duration-300",
+          isSnapped ? "bg-[#00c2cb]/30 blur-[12px]" : "bg-white/10 blur-[6px]"
+        )} />
         
         {/* Main white line with secondary glow */}
-        <div className="absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-full bg-white shadow-[0_0_15px_rgba(255,255,255,0.8)]" />
+        <div className={cn(
+          "absolute top-0 left-1/2 -translate-x-1/2 w-[2px] h-full transition-all",
+          isSnapped ? "bg-[#00c2cb] scale-x-150" : "bg-white"
+        )} />
         
         {/* Playhead Head (Rounded) */}
-        <div className="absolute -top-1 -left-1 w-3 h-3 bg-white rounded-full shadow-lg border border-white/20" />
+        <div className={cn(
+          "absolute -top-1 -left-[5px] w-[12px] h-[12px] rounded-full shadow-lg border transition-all",
+          isSnapped ? "bg-[#00c2cb] border-white scale-125" : "bg-white border-white/20"
+        )} />
       </div>
 
       {/* Zoom Controls */}
@@ -212,6 +270,25 @@ export default function Timeline({
             />
             {/* Time Rulers - CapCut Style High Contrast */}
             <div className="absolute top-0 left-0 right-0 h-8 md:h-10 flex items-end pointer-events-none border-b border-white/5 bg-gradient-to-b from-white/[0.03] to-transparent">
+              {/* Highlight for selected clip range in ruler */}
+              {selectedClipId && clips.find(c => c.id === selectedClipId) && (
+                <div 
+                  className="absolute top-0 bottom-0 bg-[#00c2cb]/5 z-[10]"
+                  style={{ 
+                    left: `${clips.find(c => c.id === selectedClipId)!.start * pixelsPerSecond}px`, 
+                    width: `${clips.find(c => c.id === selectedClipId)!.duration * pixelsPerSecond}px` 
+                  }}
+                >
+                  {/* Inner Boundary (Handle) Indicators - THE ONLY LOCKING LINES */}
+                  <div className="absolute left-[12px] top-0 bottom-0 w-[2.5px] bg-[#00c2cb] shadow-[0_0_15px_#00c2cb] z-20" />
+                  <div className="absolute right-[12px] top-0 bottom-0 w-[2.5px] bg-[#00c2cb] shadow-[0_0_15px_#00c2cb] z-20" />
+                  
+                  {/* Range text */}
+                  <div className="absolute -top-1 left-[18px] text-[7px] font-black text-[#00c2cb] uppercase tracking-widest translate-y-[2px]">START</div>
+                  <div className="absolute -top-1 right-[18px] text-[7px] font-black text-[#00c2cb] uppercase tracking-widest translate-y-[2px]">END</div>
+                </div>
+              )}
+
               {Array.from({ length: Math.ceil(duration) + 1 }).map((_, i) => (
                 <div 
                   key={i} 
@@ -292,6 +369,15 @@ export default function Timeline({
                             <Plus className="w-3.5 h-3.5 text-neutral-800" />
                           )}
                         </button>
+                      )}
+                      {layer === 0 && hasContiguousNext && (
+                        <div 
+                          className="absolute h-[60%] w-[1.5px] bg-white/20 z-[30] pointer-events-none rounded-full translate-y-1/2"
+                          style={{ 
+                            left: `${(clip.start + clip.duration) * pixelsPerSecond}px`,
+                            top: '20%'
+                          }}
+                        />
                       )}
                     </React.Fragment>
                   );
