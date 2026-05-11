@@ -75,8 +75,8 @@ export default function Timeline({
     let newTime = scrollLeft / pixelsPerSecond;
     
     // Magnetic Snap Logic - Increased threshold for "=|" feeling
-    const snapThresholdPx = 28; // Massive radius in pixels for snapping
-    const stickyRadiusPx = 15;  // Deadzone where it "sticks" hard
+    const snapThresholdPx = 22; // Balanced threshold
+    const stickyRadiusPx = 14;  // Deadzone where it "sticks" hard
     
     // Prioritize selected clip's boundaries and its keyframes
     const selectedClip = clips.find(c => c.id === selectedClipId);
@@ -94,11 +94,11 @@ export default function Timeline({
     
     // Prioritize inner boundaries VERY highly by putting them first
     // Filter out the selected clip's outer boundaries strictly to avoid locking to the "wrong" edges
-    const snapPoints = [
+    const snapPoints = Array.from(new Set([
       ...selectedClipInnerBoundaries,
       ...selectedClipKeyframes,
       ...clipBoundaries.filter(p => !selectedClipBoundaries.includes(p))
-    ];
+    ]));
     
     // Find closest snap point
     const closestSnap = snapPoints.find(p => Math.abs(p * pixelsPerSecond - scrollLeft) < snapThresholdPx);
@@ -210,6 +210,31 @@ export default function Timeline({
       </div>
 
       <div className="flex-1 relative flex flex-col overflow-hidden">
+      {/* Time Display Header - CapCut Style */}
+      <div className="h-8 md:h-10 bg-[#0a0a0a] border-b border-white/5 flex items-center justify-between px-4 z-[220]">
+        <div className="flex items-center gap-2">
+          <div className="px-2 py-0.5 bg-white/5 rounded border border-white/5">
+            <span className="text-[11px] font-black font-mono text-[#00c2cb] tabular-nums tracking-wider leading-none">
+              {formatTime(currentTime)}
+            </span>
+          </div>
+          <span className="text-[10px] font-black text-white/20 uppercase tracking-widest mt-0.5">/ {formatTime(duration)}</span>
+        </div>
+        
+        <div className="flex items-center gap-4">
+           {selectedClipId && (
+             <motion.div 
+               initial={{ opacity: 0, x: 10 }}
+               animate={{ opacity: 1, x: 0 }}
+               className="flex items-center gap-1.5"
+             >
+               <span className="text-[9px] font-black text-white/30 uppercase tracking-tighter">Durasi terpilih:</span>
+               <span className="text-[10px] font-black text-white bg-white/10 px-1.5 rounded">{clips.find(c => c.id === selectedClipId)?.duration.toFixed(2)}s</span>
+             </motion.div>
+           )}
+        </div>
+      </div>
+
       {/* Playhead - exactly at the center of the container (GLOWING) */}
       <div className="absolute top-0 bottom-0 left-1/2 w-[2px] -ml-[1px] z-[150] pointer-events-none transition-transform"
         style={{ 
@@ -290,18 +315,27 @@ export default function Timeline({
                 </div>
               )}
 
-              {Array.from({ length: Math.ceil(duration) + 1 }).map((_, i) => (
-                <div 
-                  key={i} 
-                  className="absolute flex flex-col items-center" 
-                  style={{ left: `${i * pixelsPerSecond}px` }}
-                >
-                  <div className="w-[1px] md:w-[1.5px] h-2 md:h-3 bg-white/30" />
-                  <span className="absolute bottom-1.5 md:bottom-2 text-[7px] md:text-[8px] font-black font-mono text-white/40 tracking-tighter translate-y-6">
-                    {formatTime(i)}
-                  </span>
-                </div>
-              ))}
+              {Array.from({ length: Math.ceil(duration) * 2 + 1 }).map((_, i) => {
+                const time = i * 0.5;
+                const isWholeSecond = i % 2 === 0;
+                return (
+                  <div 
+                    key={i} 
+                    className="absolute flex flex-col items-center" 
+                    style={{ left: `${time * pixelsPerSecond}px` }}
+                  >
+                    <div className={cn(
+                      "w-[1px] md:w-[1.5px] transition-all",
+                      isWholeSecond ? "h-3 md:h-4 bg-white/40" : "h-1.5 md:h-2 bg-white/15"
+                    )} />
+                    {isWholeSecond && (
+                      <span className="absolute bottom-1.5 md:bottom-2 text-[7px] md:text-[8px] font-black font-mono text-white/40 tracking-tighter translate-y-6 select-none">
+                        {formatTime(time)}
+                      </span>
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
           <div className="flex-1 flex flex-col py-1 md:py-2 gap-0.5 md:gap-1 min-h-0">
@@ -747,9 +781,16 @@ function ClipItem({
       <div className="w-full h-full relative flex items-center px-3 overflow-hidden z-20">
         {clip.type === 'audio' && <Music className="w-3.5 h-3.5 text-white mr-1.5 flex-shrink-0" />}
         {clip.type === 'text' && <Type className="w-3.5 h-3.5 text-white mr-1.5 flex-shrink-0" />}
-        <span className="text-[9px] font-bold uppercase text-white truncate max-w-full drop-shadow-lg pointer-events-none bg-black/30 px-1.5 py-0.5 rounded-sm">
-           {clip.type === 'text' ? (clip.text || 'TEKS') : clip.type.toUpperCase()}
-        </span>
+        <div className="flex flex-col">
+          <span className="text-[9px] font-black uppercase text-white truncate max-w-full drop-shadow-lg pointer-events-none bg-black/40 px-1.5 py-0.5 rounded-sm">
+             {clip.type === 'text' ? (clip.text || 'TEKS') : clip.type.toUpperCase()}
+          </span>
+          {isSelected && (
+            <span className="text-[7px] font-black text-white/60 bg-black/40 px-1 rounded-sm mt-0.5 w-fit">
+              {clip.duration.toFixed(1)}s
+            </span>
+          )}
+        </div>
       </div>
     </motion.div>
   );

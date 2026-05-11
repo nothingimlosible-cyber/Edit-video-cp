@@ -159,7 +159,7 @@ export default function Editor({ project, onBack }: EditorProps) {
   const triggerDownload = () => {
     try {
       const data = {
-        project: project.name || 'Untitled Project',
+        project: project.name || 'Proyek Baru',
         clipsCount: clips.length,
         duration: totalDuration,
         aspectRatio,
@@ -178,7 +178,8 @@ export default function Editor({ project, onBack }: EditorProps) {
           x: c.x,
           y: c.y,
           rotation: c.rotation,
-          keyframes: c.keyframes
+          keyframes: c.keyframes,
+          text: c.text
         }))
       };
       
@@ -187,12 +188,11 @@ export default function Editor({ project, onBack }: EditorProps) {
       const link = document.createElement('a');
       link.style.display = 'none';
       link.href = url;
-      link.download = `Project_${Date.now()}.json`;
+      link.download = `${project.name || 'Video'}_Project.json`;
       
       document.body.appendChild(link);
       link.click();
       
-      // Cleanup
       setTimeout(() => {
         document.body.removeChild(link);
         URL.revokeObjectURL(url);
@@ -210,9 +210,10 @@ export default function Editor({ project, onBack }: EditorProps) {
     
     setIsExporting(true);
     setExportProgress(0);
+    setCurrentTime(0);
     
     let currentProgress = 0;
-    const totalSteps = 60; // Slightly longer for more "reliable" feel
+    const totalSteps = 40; 
     let step = 0;
 
     const interval = setInterval(() => {
@@ -221,11 +222,10 @@ export default function Editor({ project, onBack }: EditorProps) {
       currentProgress = easeOut * 100;
       
       setExportProgress(Math.round(currentProgress));
+      setCurrentTime((step / totalSteps) * totalDuration);
       
       if (step >= totalSteps) {
         clearInterval(interval);
-        
-        // Finalize
         const success = triggerDownload();
         
         if (success) {
@@ -234,13 +234,14 @@ export default function Editor({ project, onBack }: EditorProps) {
             setShowExportSuccess(false);
             setIsExporting(false);
             setShowExportDrawer(false);
+            setCurrentTime(0);
           }, 3000);
         } else {
           setIsExporting(false);
-          alert("Gagal mengekspor. Periksa koneksi atau izin browser Anda.");
+          alert("Gagal mengekspor.");
         }
       }
-    }, 80);
+    }, 60);
   };
 
   // Playback timer
@@ -633,22 +634,32 @@ export default function Editor({ project, onBack }: EditorProps) {
     
     // Magnetic Timeline Logic for Layer 0 (Primary Track)
     const updatedTarget = nextClips.find(c => c.id === id);
-    if (updatedTarget && updatedTarget.layer === 0) {
-      const layer0Clips = nextClips.filter(c => c.layer === 0).sort((a, b) => a.start - b.start);
-      
-      let currentStart = 0;
-      const updatedLayer0 = layer0Clips.map(clip => {
-        const updated = { ...clip, start: currentStart };
-        currentStart += clip.duration;
-        return updated;
-      });
+    if (updatedTarget) {
+      if (updatedTarget.layer === 0) {
+        const layer0Clips = nextClips.filter(c => c.layer === 0).sort((a, b) => a.start - b.start);
+        
+        let currentStart = 0;
+        const updatedLayer0 = layer0Clips.map(clip => {
+          const updated = { ...clip, start: currentStart };
+          currentStart += clip.duration;
+          return updated;
+        });
 
-      nextClips = nextClips.map(c => {
-        if (c.layer === 0) {
-          return updatedLayer0.find(u => u.id === c.id) || c;
-        }
-        return c;
-      });
+        nextClips = nextClips.map(c => {
+          if (c.layer === 0) {
+            return updatedLayer0.find(u => u.id === c.id) || c;
+          }
+          return c;
+        });
+      } else {
+        // Overlay Layer Overlap Prevention (Optional but adds 'smoothness')
+        const otherClipsOnLayer = nextClips.filter(c => c.layer === updatedTarget.layer && c.id !== id);
+        otherClipsOnLayer.forEach(other => {
+          const buffer = 0.05; // 50ms cushion
+          // If we overlap an existing clip on the same overlay layer, push the other one or prevent movement?
+          // For CapCut overlays can overlap, so we generally leave them, but we could add snapping here.
+        });
+      }
     }
 
     setClips(nextClips);

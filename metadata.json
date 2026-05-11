@@ -1,6 +1,6 @@
 {
   "name": "LanAnonymous Editor",
-  "description": "Professional mobile-first video editor by LanAnonymous with timeline, keyframe animations, and advanced effects.",
+  "description": "Professional mobile-first video editor with high-precision timeline, magnetic clip snapping, smooth transition logic, and project file export.",
   "requestFramePermissions": [
     "camera",
     "microphone"
