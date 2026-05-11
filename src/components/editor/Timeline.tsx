@@ -93,10 +93,11 @@ export default function Timeline({
     const selectedClipKeyframes = selectedClip?.keyframes?.map(kf => selectedClip.start + kf.time) || [];
     
     // Prioritize inner boundaries VERY highly by putting them first
+    // Filter out the selected clip's outer boundaries strictly to avoid locking to the "wrong" edges
     const snapPoints = [
       ...selectedClipInnerBoundaries,
       ...selectedClipKeyframes,
-      ...clipBoundaries
+      ...clipBoundaries.filter(p => !selectedClipBoundaries.includes(p))
     ];
     
     // Find closest snap point
@@ -112,8 +113,8 @@ export default function Timeline({
         selectedClipKeyframes.includes(closestSnap);
 
       const isInnerPoint = selectedClipInnerBoundaries.includes(closestSnap);
-      // Even stronger sticking for the inner handle edge
-      const effectiveStickyRadius = isInnerPoint ? stickyRadiusPx * 4 : isSelectedPoint ? stickyRadiusPx * 2.5 : stickyRadiusPx;
+      // Extremely strong sticking for the inner handle edge to make it feel "trapped" inside
+      const effectiveStickyRadius = isInnerPoint ? stickyRadiusPx * 5 : isSelectedPoint ? stickyRadiusPx * 2.5 : stickyRadiusPx;
 
       // STICKY LOGIC: If very close, force the time to stick even if user scrolls slightly
       if (distance < effectiveStickyRadius) {
