@@ -296,18 +296,13 @@ export default function Editor({ project, onBack }: EditorProps) {
     if (isExporting) return;
     
     setIsExporting(true);
+    setShowExportDrawer(true);
     setExportProgress(0);
     setCurrentTime(0);
     setIsPlaying(false);
     
-    // Resolution Mapping
-    const resolutions: Record<string, { w: number, h: number }> = {
-      '720p': { w: 1280, h: 720 },
-      '1080p': { w: 1920, h: 1080 },
-      '480p': { w: 854, h: 480 }
-    };
-    
-    const res = resolutions[exportRes] || resolutions['720p'];
+    // Fixed resolution for direct export (HP High Quality)
+    const res = { w: 1920, h: 1080 };
     let width = res.w;
     let height = res.h;
     
@@ -340,7 +335,7 @@ export default function Editor({ project, onBack }: EditorProps) {
     const stream = canvas.captureStream(exportFps);
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: 12000000 // 12Mbps for high quality
+      videoBitsPerSecond: 15000000 // 15Mbps for high quality & real MB size
     });
 
     const chunks: Blob[] = [];
@@ -1064,11 +1059,14 @@ export default function Editor({ project, onBack }: EditorProps) {
             <ChevronDown className="w-3 h-3 text-white/40" />
           </button>
           <button 
-            onClick={() => setShowExportDrawer(true)}
-            className="flex items-center gap-2 px-4 py-1.5 bg-[#00c2cb] hover:bg-[#00dae4] text-white rounded-full active:scale-90 transition-all shadow-[0_0_15px_rgba(0,194,203,0.2)]"
+            onClick={handleExport}
+            disabled={isExporting}
+            className="flex items-center gap-2 px-4 py-1.5 bg-[#00c2cb] hover:bg-[#00dae4] text-white rounded-full active:scale-90 transition-all shadow-[0_0_15px_rgba(0,194,203,0.2)] disabled:opacity-50"
           >
-             <Upload className="w-4 h-4 text-white font-bold" />
-             <span className="text-[11px] font-black uppercase tracking-widest leading-none mt-0.5">Ekspor</span>
+             <Upload className={cn("w-4 h-4 text-white font-bold", isExporting && "animate-bounce")} />
+             <span className="text-[11px] font-black uppercase tracking-widest leading-none mt-0.5">
+               {isExporting ? `${exportProgress}%` : 'Ekspor'}
+             </span>
           </button>
         </div>
       </header>
@@ -1954,24 +1952,38 @@ export default function Editor({ project, onBack }: EditorProps) {
                    <span className="text-sm font-black uppercase text-white tracking-widest">Ekspor Berhasil!</span>
                  </motion.div>
                )}
-             </AnimatePresence>
-
-             <motion.div 
+             </AnimatePresence>             <motion.div 
                initial={{ scale: 0.9, opacity: 0, y: 50 }}
                animate={{ scale: 1, opacity: 1, y: 0 }}
                exit={{ scale: 0.95, opacity: 0, y: 20 }}
-               className="w-full max-w-[950px] bg-[#0c0c0c] rounded-[40px] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col md:flex-row h-full md:h-[650px] relative overflow-hidden"
+               className="w-full max-w-[500px] h-fit p-10 bg-[#0c0c0c] rounded-[40px] border border-white/10 shadow-[0_40px_100px_rgba(0,0,0,0.9)] flex flex-col items-center relative overflow-hidden"
              >
                 {/* Exporting Global Overlay */}
-                <AnimatePresence>
-                  {isExporting && (
+                <div className="flex flex-col items-center justify-center gap-8 w-full">
+                  {showExportSuccess ? (
                     <motion.div 
-                      key="export-overlay"
-                      initial={{ opacity: 0 }}
-                      animate={{ opacity: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-0 z-[5000] bg-black/95 backdrop-blur-3xl flex flex-col items-center justify-center gap-8 p-10 overflow-hidden"
+                      initial={{ scale: 0.5, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      className="flex flex-col items-center gap-6"
                     >
+                      <div className="w-24 h-24 bg-[#00c2cb] rounded-full flex items-center justify-center shadow-[0_0_40px_rgba(0,194,203,0.4)]">
+                        <Check className="w-12 h-12 text-white stroke-[4]" />
+                      </div>
+                      <div className="text-center space-y-2">
+                        <h3 className="text-2xl font-black text-white uppercase tracking-[0.2em]">BERHASIL!</h3>
+                        <p className="text-[12px] text-white/40 uppercase tracking-widest leading-relaxed">
+                          Video {(parseFloat(exportSize || '0')).toFixed(1)} MB disimpan.<br/>Cek Galeri atau folder Download.
+                        </p>
+                      </div>
+                      <button 
+                        onClick={() => setShowExportDrawer(false)}
+                        className="mt-4 px-10 py-3 bg-white/5 border border-white/10 rounded-full text-[11px] font-black text-white hover:bg-white/10 transition-all uppercase tracking-widest"
+                      >
+                        Selesai
+                      </button>
+                    </motion.div>
+                  ) : (
+                    <>
                       <div className="relative w-44 h-44 flex items-center justify-center">
                         <svg className="w-full h-full -rotate-90">
                           <circle cx="88" cy="88" r="80" fill="none" stroke="white" strokeWidth="2" className="opacity-5" />
@@ -1989,7 +2001,7 @@ export default function Editor({ project, onBack }: EditorProps) {
                         </div>
                       </div>
                       
-                      <div className="w-full max-w-xs h-32 rounded-2xl overflow-hidden border border-white/10 relative">
+                      <div className="w-full h-32 rounded-2xl overflow-hidden border border-white/10 relative">
                         <Preview 
                           clips={clips}
                           currentTime={currentTime}
@@ -2001,145 +2013,29 @@ export default function Editor({ project, onBack }: EditorProps) {
                       </div>
 
                       <div className="text-center space-y-4">
-                        <h3 className="text-2xl font-black text-white uppercase tracking-[0.5em] italic">Merender Proyek</h3>
+                        <h3 className="text-xl font-black text-white uppercase tracking-[0.4em] italic">Sedang Mengekspor...</h3>
                         <div className="flex flex-col gap-2">
                           <p className="text-[11px] text-white/40 uppercase tracking-widest font-bold">Mohon jangan tutup aplikasi ini</p>
-                    <p className="text-[9px] text-[#00c2cb] uppercase tracking-[0.2em] italic font-black animate-pulse">
-                      {exportProgress < 20 ? 'Menyiapkan aset...' : 
-                       exportProgress < 60 ? 'Memproses filter...' : 
-                       exportProgress < 80 ? 'Encoding frame...' : 
-                       exportProgress < 95 ? 'Mengonversi ke MP4 (HQ)...' : 'Menyimpan Proyek ke Android...'}
-                    </p>
-                    <p className="text-[8px] text-white/20 uppercase tracking-widest mt-2">
-                       Setelah selesai, buka file .json di Google Colab untuk MP4
-                    </p>
-                  </div>
-                </div>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-                <button 
-                  onClick={() => !isExporting && setShowExportDrawer(false)}
-                  className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-all z-20"
-                >
-                   <X className="w-5 h-5" />
-                </button>
-
-                {/* Left: Preview */}
-                <div className="flex-1 bg-black p-8 flex flex-col items-center justify-center gap-8 relative group">
-                  <div className={cn(
-                    "relative shadow-2xl transition-all duration-700",
-                    aspectRatio === '16:9' ? 'aspect-video w-full' : 
-                    aspectRatio === '9:16' ? 'aspect-[9/16] h-[400px]' : 'aspect-square h-[350px]'
-                  )}>
-                     <div className="absolute inset-0 bg-[#222] rounded-lg animate-pulse" />
-                     <img 
-                       src={clips[0]?.src || "https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=800&auto=format&fit=crop"} 
-                       className="w-full h-full object-cover rounded-lg relative z-10 border border-white/10"
-                       referrerPolicy="no-referrer"
-                     />
-                     <div className="absolute inset-0 z-20 flex items-center justify-center">
-                        <div className="w-14 h-14 bg-white/10 backdrop-blur-xl border border-white/20 rounded-full flex items-center justify-center shadow-2xl">
-                           <Play className="w-7 h-7 text-white fill-white ml-1 opacity-80" />
+                          <p className="text-[9px] text-[#00c2cb] uppercase tracking-[0.2em] italic font-black animate-pulse">
+                            {exportProgress < 20 ? 'Menyiapkan aset...' : 
+                             exportProgress < 60 ? 'Memproses filter...' : 
+                             exportProgress < 80 ? 'Encoding frame...' : 
+                             exportProgress < 95 ? 'Mengonversi ke MP4 (HQ)...' : 'Menyimpan Proyek ke Android...'}
+                          </p>
                         </div>
-                     </div>
-                  </div>
-                  <div className="flex flex-col items-center gap-1 text-center">
-                    <span className="text-[11px] font-black uppercase text-white tracking-[0.4em]">{project.name}</span>
-                    <span className="text-[9px] font-black uppercase text-white/20 tracking-[0.2em] italic">Siap untuk ekspor</span>
-                  </div>
+                      </div>
+                    </>
+                  )}
                 </div>
 
-                {/* Right: Settings */}
-                <div className="w-full md:w-[350px] bg-[#111] border-l border-white/5 p-6 md:p-10 flex flex-col overflow-y-auto no-scrollbar">
-                   <h2 className="text-xl md:text-2xl font-black text-white italic tracking-tighter mb-6 md:mb-10 flex items-center gap-3">
-                      <div className="w-2 h-8 bg-[#00c2cb]" />
-                      EKSPOR PRO
-                   </h2>
-
-                   <div className="flex-1 space-y-8 md:space-y-10">
-                      <div className="space-y-4">
-                         <label className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] flex items-center gap-2">
-                           <Settings className="w-3.5 h-3.5" />
-                           Resolusi
-                         </label>
-                         <div className="grid grid-cols-2 gap-3">
-                            {['720p', '1080p', '2K', '4K'].map(res => (
-                              <button 
-                                key={res}
-                                onClick={() => setExportRes(res)}
-                                className={cn(
-                                  "py-3 rounded-xl border text-[11px] font-bold transition-all",
-                                  exportRes === res ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]" : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
-                                )}
-                              >
-                                {res}
-                              </button>
-                            ))}
-                         </div>
-                      </div>
-
-                      <div className="space-y-4">
-                         <label className="text-[10px] font-black uppercase text-white/30 tracking-[0.2em] flex items-center gap-2">
-                           <Zap className="w-3.5 h-3.5" />
-                           Laju Bingkai
-                         </label>
-                         <div className="grid grid-cols-3 gap-3">
-                            {[24, 30, 60].map(fps => (
-                              <button 
-                                key={fps}
-                                onClick={() => setExportFps(fps)}
-                                className={cn(
-                                  "py-3 rounded-xl border text-[11px] font-bold transition-all",
-                                  exportFps === fps ? "bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.1)]" : "bg-white/5 border-white/5 text-white/40 hover:bg-white/10"
-                                )}
-                              >
-                                {fps} <span className="text-[8px] font-normal opacity-60">fps</span>
-                              </button>
-                            ))}
-                         </div>
-                      </div>
-
-                      <div className="p-5 bg-white/5 rounded-[20px] border border-white/5 space-y-2">
-                         <div className="flex justify-between items-center text-[10px] font-bold">
-                            <span className="text-white/30 italic uppercase">Estimasi Ukuran</span>
-                            <span className="text-white">~45.2 MB</span>
-                         </div>
-                         <div className="flex justify-between items-center text-[10px] font-bold">
-                            <span className="text-white/30 italic uppercase">Durasi Total</span>
-                            <span className="text-white">{formatTime(totalDuration)}</span>
-                         </div>
-                      </div>
-                   </div>                    <div className="mt-10 pt-10 border-t border-white/5 space-y-4">
-                      <button 
-                        onClick={handleExport}
-                        disabled={isExporting}
-                        className="relative w-full h-16 bg-[#00c2cb] hover:bg-[#00dae4] rounded-2xl flex items-center justify-center overflow-hidden transition-all active:scale-95 group shadow-[0_20px_40px_rgba(0,194,203,0.2)]"
-                      >
-                         {isExporting ? (
-                           <div className="absolute inset-0 bg-white/20 origin-left" style={{ width: `${exportProgress}%`, transition: 'width 0.1s linear' }} />
-                         ) : null}
-                         <span className={cn(
-                           "relative z-10 text-white font-black uppercase tracking-[0.4em] transition-all flex items-center gap-3",
-                           isExporting ? "scale-90 opacity-60 text-xs" : "group-hover:scale-105"
-                         )}>
-                           {!isExporting && <Download className="w-5 h-5 text-white" />}
-                           {isExporting ? `Mengekspor ${exportProgress}%` : 'Mulai Ekspor'}
-                         </span>
-                      </button>
-
-                      <button 
-                        onClick={handleCaptureFrame}
-                        disabled={isExporting}
-                        className="w-full h-12 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl flex items-center justify-center transition-all active:scale-95 group"
-                      >
-                         <span className="text-white/40 group-hover:text-white font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-3">
-                           <ImageIcon className="w-4 h-4" />
-                           Ekspor Bingkai (PNG)
-                         </span>
-                      </button>
-                   </div>
-                </div>
+                {!isExporting && !showExportSuccess && (
+                  <button 
+                    onClick={() => setShowExportDrawer(false)}
+                    className="absolute top-6 right-6 p-2 bg-white/5 hover:bg-white/10 rounded-full text-white/40 hover:text-white transition-all z-20"
+                  >
+                     <X className="w-5 h-5" />
+                  </button>
+                )}
              </motion.div>
           </motion.div>
         )}
