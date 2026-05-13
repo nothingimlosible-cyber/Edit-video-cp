@@ -438,9 +438,11 @@ export default function Editor({ project, onBack }: EditorProps) {
         ]);
         
         setExportProgress(95);
-        setFfmpegLog('Membaca file MP4...');
+        setFfmpegLog('Menyiapkan hasil akhir...');
         const mp4Data = await ffmpeg.readFile(mp4Name);
-        finalBlob = new Blob([(mp4Data as Uint8Array).buffer], { type: 'video/mp4' });
+        
+        // Use Uint8Array directly to avoid SharedArrayBuffer issues in Blob constructor
+        finalBlob = new Blob([mp4Data as Uint8Array], { type: 'video/mp4' });
         finalFileName = `${project.name || 'Video'}_Result.mp4`;
         
         // Cleanup FFmpeg FS to free memory
