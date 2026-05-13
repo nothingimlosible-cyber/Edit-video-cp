@@ -233,6 +233,7 @@ export default function Editor({ project, onBack }: EditorProps) {
   };
 
   const [exportSize, setExportSize] = useState<string | null>(null);
+  const [ffmpegLog, setFfmpegLog] = useState<string>('');
 
   const handleCaptureFrame = async () => {
     // Resolution Mapping for Image (Highest possible)
@@ -391,25 +392,48 @@ export default function Editor({ project, onBack }: EditorProps) {
     let finalFileName = `${project.name || 'Video'}_Result.${extension}`;
 
     try {
+      setFfmpegLog('Memuat FFmpeg...');
       const ffmpeg = await getFFmpeg();
-      setExportProgress(90);
+      setExportProgress(88);
       
+      ffmpeg.on('log', ({ message }) => {
+        setFfmpegLog(message);
+      });
+
       // Write WebM to FFmpeg FS
       const webmName = 'input.webm';
       const mp4Name = 'output.mp4';
+      setFfmpegLog('Menyiapkan file...');
       await ffmpeg.writeFile(webmName, await fetchFile(videoBlob));
       
       // Convert to MP4
-      // -c:v copy is fastest but -c:v libx264 ensures better compatibility
-      // We use libx264 for "real video" feel
-      await ffmpeg.exec(['-i', webmName, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', mp4Name]);
+      setFfmpegLog('Mengonversi ke MP4... (Silakan Tunggu)');
+      setExportProgress(90);
       
+      // Simplified command for better mobile compatibility
+      await ffmpeg.exec([
+        '-i', webmName, 
+        '-c:v', 'libx264', 
+        '-preset', 'ultrafast', 
+        '-crf', '28', // Slightly lower quality for much faster speed on mobile
+        '-movflags', 'faststart',
+        '-pix_fmt', 'yuv420p',
+        mp4Name
+      ]);
+      
+      setExportProgress(95);
+      setFfmpegLog('Membaca hasil ekspor...');
       const mp4Data = await ffmpeg.readFile(mp4Name);
       finalBlob = new Blob([(mp4Data as Uint8Array).buffer], { type: 'video/mp4' });
       finalFileName = `${project.name || 'Video'}_Result.mp4`;
-      setExportProgress(95);
+      
+      // Cleanup
+      await ffmpeg.deleteFile(webmName);
+      await ffmpeg.deleteFile(mp4Name);
     } catch (ffmpegErr) {
       console.error('FFmpeg remux failed, using original webm:', ffmpegErr);
+      setFfmpegLog('FFmpeg Gagal: Menggunakan WebM sebagai cadangan...');
+      await new Promise(r => setTimeout(r, 2000));
     }
 
     // NATIVE ANDROID/IOS EXPORT LOGIC
@@ -2020,8 +2044,13 @@ export default function Editor({ project, onBack }: EditorProps) {
                             {exportProgress < 20 ? 'Menyiapkan aset...' : 
                              exportProgress < 60 ? 'Memproses filter...' : 
                              exportProgress < 80 ? 'Encoding frame...' : 
-                             exportProgress < 95 ? 'Mengonversi ke MP4 (HQ)...' : 'Menyimpan Proyek ke Android...'}
+                             exportProgress < 95 ? (ffmpegLog || 'Mengonversi ke MP4 (HQ)...') : 'Menyimpan Proyek ke Android...'}
                           </p>
+                          {exportProgress >= 80 && exportProgress < 100 && ffmpegLog && (
+                            <p className="text-[7px] text-white/20 font-mono mt-1 opacity-50 truncate max-w-[200px]">
+                              {ffmpegLog}
+                            </p>
+                          )}
                         </div>
                       </div>
                     </>
