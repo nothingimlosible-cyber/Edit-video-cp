@@ -124,14 +124,32 @@ async function getElementForClip(clip: Clip): Promise<HTMLImageElement | HTMLVid
   if (elementCache.has(clip.src)) return elementCache.get(clip.src)!;
 
   return new Promise((resolve) => {
+    let resolved = false;
+    const timeout = setTimeout(() => {
+      if (!resolved) {
+        resolved = true;
+        resolve(null);
+      }
+    }, 10000); // 10s timeout per asset
+
     if (clip.type === 'photo') {
       const img = new Image();
       img.crossOrigin = 'anonymous';
       img.onload = () => {
-        elementCache.set(clip.src, img);
-        resolve(img);
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          elementCache.set(clip.src, img);
+          resolve(img);
+        }
       };
-      img.onerror = () => resolve(null);
+      img.onerror = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          resolve(null);
+        }
+      };
       img.src = clip.src;
     } else if (clip.type === 'video') {
       const video = document.createElement('video');
@@ -139,12 +157,23 @@ async function getElementForClip(clip: Clip): Promise<HTMLImageElement | HTMLVid
       video.muted = true;
       video.preload = 'auto';
       video.onloadeddata = () => {
-        elementCache.set(clip.src, video);
-        resolve(video);
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          elementCache.set(clip.src, video);
+          resolve(video);
+        }
       };
-      video.onerror = () => resolve(null);
+      video.onerror = () => {
+        if (!resolved) {
+          resolved = true;
+          clearTimeout(timeout);
+          resolve(null);
+        }
+      };
       video.src = clip.src;
     } else {
+      clearTimeout(timeout);
       resolve(null);
     }
   });

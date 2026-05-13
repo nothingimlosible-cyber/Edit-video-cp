@@ -304,8 +304,18 @@ export default function Editor({ project, onBack }: EditorProps) {
     setCurrentTime(0);
     setIsPlaying(false);
     
-    // Fixed resolution for direct export (HP High Quality)
-    const res = { w: 1920, h: 1080 };
+    // Wake Lock to prevent sleep on mobile
+    let wakeLock: any = null;
+    try {
+      if ('wakeLock' in navigator) {
+        wakeLock = await (navigator as any).wakeLock.request('screen');
+      }
+    } catch (err) {
+      console.log('WakeLock failed:', err);
+    }
+    
+    // Optimization for Mobile: 720p is much more stable than 1080p in browser
+    const res = { w: 1280, h: 720 };
     let width = res.w;
     let height = res.h;
     
@@ -339,7 +349,7 @@ export default function Editor({ project, onBack }: EditorProps) {
     
     const mediaRecorder = new MediaRecorder(stream, {
       mimeType,
-      videoBitsPerSecond: 10000000 // 10Mbps is more stable for mobile encoders
+      videoBitsPerSecond: 8000000 // 8Mbps is very stable for mobile encoders and looks great at 720p
     });
 
     const chunks: Blob[] = [];
@@ -449,6 +459,13 @@ export default function Editor({ project, onBack }: EditorProps) {
 
     setExportBlob(finalBlob);
     setExportFileName(finalFileName);
+
+    // Release Wake Lock
+    if (wakeLock) {
+      wakeLock.release().then(() => {
+        wakeLock = null;
+      });
+    }
 
     // NATIVE ANDROID/IOS EXPORT LOGIC
     try {
