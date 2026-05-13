@@ -234,6 +234,8 @@ export default function Editor({ project, onBack }: EditorProps) {
 
   const [exportSize, setExportSize] = useState<string | null>(null);
   const [ffmpegLog, setFfmpegLog] = useState<string>('');
+  const [exportBlob, setExportBlob] = useState<Blob | null>(null);
+  const [exportFileName, setExportFileName] = useState<string>('');
 
   const handleCaptureFrame = async () => {
     // Resolution Mapping for Image (Highest possible)
@@ -324,23 +326,20 @@ export default function Editor({ project, onBack }: EditorProps) {
 
     // Select best supported mime type
     const supportedMimeTypes = [
+      'video/mp4',
       'video/webm;codecs=vp9,opus',
       'video/webm;codecs=vp8,opus',
-      'video/webm',
-      'video/mp4'
+      'video/webm'
     ];
     
-    const mimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(supportedMimeTypes[0])) ? 
-                     supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type)) : 
-                     'video/webm';
-    
-    const extension = (mimeType && mimeType.includes('mp4')) ? 'mp4' : 'webm';
+    const mimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || 'video/webm';
+    const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
 
     const stream = canvas.captureStream(exportFps);
     
     const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: mimeType || 'video/webm',
-      videoBitsPerSecond: 20000000 // 20Mbps for high quality
+      mimeType,
+      videoBitsPerSecond: 10000000 // 10Mbps is more stable for mobile encoders
     });
 
     const chunks: Blob[] = [];
@@ -391,60 +390,65 @@ export default function Editor({ project, onBack }: EditorProps) {
     const videoBlob = await finishExport();
     setExportProgress(85);
     
-    // FFmpeg Processing to MP4
+    // FFmpeg Processing to MP4 (Only if SharedArrayBuffer is available)
     let finalBlob: Blob = videoBlob;
     let finalFileName = `${project.name || 'Video'}_Result.${extension}`;
 
-    // CHECK FOR SHARED ARRAY BUFFER (REQUIRED BY FFMPEG 0.12)
-    const canUseFFmpeg = typeof SharedArrayBuffer !== 'undefined' || window.crossOriginIsolated;
+    const canUseFFmpeg = typeof SharedArrayBuffer !== 'undefined';
 
-    if (canUseFFmpeg) {
+    if (canUseFFmpeg && extension !== 'mp4') {
       try {
-        setFfmpegLog('Memuat Sistem Konversi...');
+        setFfmpegLog('Memuat Konverter MP4...');
         const ffmpeg = await getFFmpeg();
         setExportProgress(88);
         
         ffmpeg.on('log', ({ message }) => {
-          setFfmpegLog(message);
+          if (message.includes('frame=')) setFfmpegLog('Mengonversi: ' + message.split('time=')[1]?.split(' ')[0] || 'Processing...');
+          else setFfmpegLog(message);
         });
 
-        const webmName = 'input.webm';
+        const webmName = 'input.' + extension;
         const mp4Name = 'output.mp4';
         
-        setFfmpegLog('Mempersiapkan File...');
+        setFfmpegLog('Mempersiapkan data...');
         await ffmpeg.writeFile(webmName, await fetchFile(videoBlob));
         
         setFfmpegLog('Konversi ke MP4 (High Quality)...');
         setExportProgress(90);
         
-        // Optimalkan untuk HP: Ultrafast + CRF 30 (Keseimbangan Speed/Size)
+        // Mobile-optimized conversion
         await ffmpeg.exec([
           '-i', webmName, 
           '-c:v', 'libx264', 
           '-preset', 'ultrafast', 
-          '-crf', '30', 
+          '-crf', '32', // Slightly lower quality for much better reliability on mobile
           '-movflags', 'faststart',
           '-pix_fmt', 'yuv420p',
           mp4Name
         ]);
         
         setExportProgress(95);
-        setFfmpegLog('Menyiapkan Hasil Akhir...');
+        setFfmpegLog('Membaca file MP4...');
         const mp4Data = await ffmpeg.readFile(mp4Name);
         finalBlob = new Blob([(mp4Data as Uint8Array).buffer], { type: 'video/mp4' });
         finalFileName = `${project.name || 'Video'}_Result.mp4`;
         
-        await ffmpeg.deleteFile(webmName);
-        await ffmpeg.deleteFile(mp4Name);
+        // Cleanup FFmpeg FS to free memory
+        await ffmpeg.deleteFile(webmName).catch(() => {});
+        await ffmpeg.deleteFile(mp4Name).catch(() => {});
       } catch (ffmpegErr) {
-        console.error('FFmpeg failed, falling back to WebM:', ffmpegErr);
-        setFfmpegLog('Konversi Gagal: Menggunakan format WebM (Tetap HD)...');
+        console.error('FFmpeg remux failed:', ffmpegErr);
+        setFfmpegLog('Gagal konversi, menggunakan format asli...');
         await new Promise(r => setTimeout(r, 1000));
       }
     } else {
-      setFfmpegLog('Browser tidak mendukung konversi MP4: Menggunakan WebM HD...');
-      await new Promise(r => setTimeout(r, 1500));
+      const reason = !canUseFFmpeg ? 'Browser tidak mendukung konversi MP4' : 'Sudah dalam format MP4';
+      setFfmpegLog(`${reason}, menyimpan sebagai ${extension.toUpperCase()}...`);
+      await new Promise(r => setTimeout(r, 1000));
     }
+
+    setExportBlob(finalBlob);
+    setExportFileName(finalFileName);
 
     // NATIVE ANDROID/IOS EXPORT LOGIC
     try {
@@ -2005,12 +2009,31 @@ export default function Editor({ project, onBack }: EditorProps) {
                           Video {(parseFloat(exportSize || '0')).toFixed(1)} MB disimpan.<br/>Cek Galeri atau folder Download.
                         </p>
                       </div>
-                      <button 
-                        onClick={() => setShowExportDrawer(false)}
-                        className="mt-4 px-10 py-3 bg-white/5 border border-white/10 rounded-full text-[11px] font-black text-white hover:bg-white/10 transition-all uppercase tracking-widest"
-                      >
-                        Selesai
-                      </button>
+                      
+                      <div className="flex flex-col gap-3 w-full">
+                        <button 
+                          onClick={() => {
+                            if (exportBlob) {
+                              const url = URL.createObjectURL(exportBlob);
+                              const link = document.createElement('a');
+                              link.href = url;
+                              link.download = exportFileName;
+                              link.click();
+                            }
+                          }}
+                          className="w-full py-4 bg-[#00c2cb] rounded-2xl text-[11px] font-black text-white hover:bg-[#00dae4] transition-all uppercase tracking-widest flex items-center justify-center gap-3 shadow-[0_10px_30px_rgba(0,194,203,0.2)]"
+                        >
+                          <Download className="w-4 h-4" />
+                          Simpan Manual (Download)
+                        </button>
+                        
+                        <button 
+                          onClick={() => setShowExportDrawer(false)}
+                          className="w-full py-4 bg-white/5 border border-white/10 rounded-2xl text-[11px] font-black text-white/40 hover:bg-white/10 hover:text-white transition-all uppercase tracking-widest"
+                        >
+                          Tutup
+                        </button>
+                      </div>
                     </motion.div>
                   ) : (
                     <>
