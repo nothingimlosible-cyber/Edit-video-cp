@@ -2,10 +2,13 @@ import React, { useState, useRef, useEffect } from 'react';
 import { X, ChevronDown, ChevronLeft, ChevronRight, ChevronUp, Target, Play, Pause, Undo, Redo, RotateCcw, RotateCw, Maximize2, Scissors, Music, Type, Plus, Wand2, Layers, Smile, MessageSquare, Filter, Sliders, Settings, Volume2, FastForward, Diamond, Droplets, Sun, Contrast, Zap, FlipHorizontal, FlipVertical, Copy, Circle, Search, CornerUpLeft, CornerUpRight, Image as ImageIcon, Monitor, Square, MousePointer2, Type as TypeIcon, Palette, Ghost, Minus, TrendingUp, Upload, Trash2, Check, Crop, Mic, HardDrive, Headphones, Download } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Share } from '@capacitor/share';
+import { Filesystem, Directory } from '@capacitor/filesystem';
 import { Project, Clip, Keyframe } from '../types/editor';
 import { cn, formatTime } from '../lib/utils';
 import { getClipPropertiesAtTime } from '../lib/editorUtils';
 import { renderFrame } from '../lib/videoRenderer';
+import { getFFmpeg } from '../lib/ffmpegUtils';
+import { fetchFile } from '@ffmpeg/util';
 import Timeline from './editor/Timeline';
 import Preview from './editor/Preview';
 import Toolbar from './editor/Toolbar';
@@ -229,6 +232,66 @@ export default function Editor({ project, onBack }: EditorProps) {
     }
   };
 
+  const [exportSize, setExportSize] = useState<string | null>(null);
+
+  const handleCaptureFrame = async () => {
+    // Resolution Mapping for Image (Highest possible)
+    const resolutions: Record<string, { w: number, h: number }> = {
+      '720p': { w: 1280, h: 720 },
+      '1080p': { w: 1920, h: 1080 }
+    };
+    
+    const res = resolutions[exportRes] || resolutions['1080p'];
+    let width = res.w;
+    let height = res.h;
+    
+    if (aspectRatio === '9:16') [width, height] = [height, width];
+    else if (aspectRatio === '1:1') [width, height] = [height, height];
+
+    const canvas = document.createElement('canvas');
+    canvas.width = width;
+    canvas.height = height;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    // Render the current frame
+    await renderFrame(ctx, clips, currentTime, { width, height, fps: 1 });
+
+    canvas.toBlob(async (blob) => {
+      if (!blob) return;
+      const fileName = `${project.name || 'Frame'}_${currentTime.toFixed(2)}.png`;
+
+      try {
+        const isNative = window.navigator.userAgent.includes('Capacitor');
+        if (isNative) {
+          const reader = new FileReader();
+          const base64Promise = new Promise<string>((resolve) => {
+            reader.onloadend = () => resolve((reader.result as string).split(',')[1]);
+            reader.readAsDataURL(blob);
+          });
+          const base64 = await base64Promise;
+          const savedFile = await Filesystem.writeFile({
+            path: fileName,
+            data: base64,
+            directory: Directory.Cache
+          });
+          await Share.share({ title: 'Simpan Gambar', url: savedFile.uri });
+        } else {
+          const url = URL.createObjectURL(blob);
+          const link = document.createElement('a');
+          link.href = url;
+          link.download = fileName;
+          link.click();
+        }
+        
+        // Success Vibration
+        if (window.navigator.vibrate) window.navigator.vibrate(50);
+      } catch (err) {
+        console.error('Capture failed:', err);
+      }
+    }, 'image/png');
+  };
+
   const handleExport = async () => {
     if (isExporting) return;
     
@@ -263,22 +326,35 @@ export default function Editor({ project, onBack }: EditorProps) {
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
+    // Detect supported mime types
+    const mimeTypes = [
+      'video/webm;codecs=vp9,opus',
+      'video/webm;codecs=vp8,opus',
+      'video/webm',
+      'video/mp4'
+    ];
+    
+    const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
+    const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+
     const stream = canvas.captureStream(exportFps);
     const mediaRecorder = new MediaRecorder(stream, {
-      mimeType: 'video/webm;codecs=vp9', // VP9 is high quality, falling back if needed
-      videoBitsPerSecond: 5000000 // 5Mbps
+      mimeType,
+      videoBitsPerSecond: 12000000 // 12Mbps for high quality
     });
 
     const chunks: Blob[] = [];
-    mediaRecorder.ondataavailable = (e) => chunks.push(e.data);
+    mediaRecorder.ondataavailable = (e) => {
+      if (e.data.size > 0) chunks.push(e.data);
+    };
     
     const finishExport = async () => {
-      mediaRecorder.stop();
       return new Promise<Blob>((resolve) => {
         mediaRecorder.onstop = () => {
-          const blob = new Blob(chunks, { type: 'video/webm' });
+          const blob = new Blob(chunks, { type: mimeType });
           resolve(blob);
         };
+        mediaRecorder.stop();
       });
     };
 
@@ -286,45 +362,116 @@ export default function Editor({ project, onBack }: EditorProps) {
 
     const fps = exportFps;
     const totalFrames = Math.ceil(totalDuration * fps);
+    const frameInterval = 1000 / fps;
     
     // Rendering Loop
     try {
       for (let frame = 0; frame <= totalFrames; frame++) {
         const time = frame / fps;
+        if (!isExporting) break;
+
         setCurrentTime(time);
-        setExportProgress(Math.round((frame / totalFrames) * 100));
+        setExportProgress(Math.round((frame / totalFrames) * 80)); // 0-80% for recording
 
         // Draw frame
         await renderFrame(ctx, clips, time, { width, height, fps });
         
-        // Key concept: requestFrame() ensures MediaRecorder captures this exact canvas state
+        // requestFrame() helps ensure MediaRecorder captures this exact canvas state
         if ((stream as any).requestFrame) {
           (stream as any).requestFrame();
         }
 
         // Small delay to prevent browser freeze and allow encoder to process
         await new Promise(r => setTimeout(r, 10)); 
-
-        if (!isExporting) break; // Allow cancel
       }
     } catch (err) {
       console.error('Render loop failed:', err);
     }
 
     const videoBlob = await finishExport();
+    setExportProgress(85);
     
-    // Save Video
-    const url = URL.createObjectURL(videoBlob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${project.name || 'Video'}_Result.webm`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    // FFmpeg Processing to MP4
+    let finalBlob: Blob = videoBlob;
+    let finalFileName = `${project.name || 'Video'}_Result.${extension}`;
 
-    // Also trigger JSON download as backup for Colab
-    await triggerDownload();
+    try {
+      const ffmpeg = await getFFmpeg();
+      setExportProgress(90);
+      
+      // Write WebM to FFmpeg FS
+      const webmName = 'input.webm';
+      const mp4Name = 'output.mp4';
+      await ffmpeg.writeFile(webmName, await fetchFile(videoBlob));
+      
+      // Convert to MP4
+      // -c:v copy is fastest but -c:v libx264 ensures better compatibility
+      // We use libx264 for "real video" feel
+      await ffmpeg.exec(['-i', webmName, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '22', mp4Name]);
+      
+      const mp4Data = await ffmpeg.readFile(mp4Name);
+      finalBlob = new Blob([(mp4Data as Uint8Array).buffer], { type: 'video/mp4' });
+      finalFileName = `${project.name || 'Video'}_Result.mp4`;
+      setExportProgress(95);
+    } catch (ffmpegErr) {
+      console.error('FFmpeg remux failed, using original webm:', ffmpegErr);
+    }
 
+    // NATIVE ANDROID/IOS EXPORT LOGIC
+    try {
+      const isNative = window.navigator.userAgent.includes('Capacitor');
+      
+      if (isNative) {
+        // Convert Blob to Base64 for Filesystem API
+        const reader = new FileReader();
+        const base64Promise = new Promise<string>((resolve) => {
+          reader.onloadend = () => {
+            const base64data = reader.result as string;
+            resolve(base64data.split(',')[1]); 
+          };
+          reader.readAsDataURL(finalBlob);
+        });
+
+        const base64 = await base64Promise;
+        const finalSize = (finalBlob.size / (1024 * 1024)).toFixed(1);
+        setExportSize(finalSize);
+        
+        // Write to Cache directory then Share
+        const savedFile = await Filesystem.writeFile({
+          path: finalFileName,
+          data: base64,
+          directory: Directory.Cache
+        });
+
+        await Share.share({
+          title: 'Ekspor Video Berhasil',
+          text: `Video Anda (${finalSize} MB) siap dibagikan!`,
+          url: savedFile.uri,
+          dialogTitle: 'Simpan Video ke Galeri'
+        });
+      } else {
+        // Browser Fallback
+        const url = URL.createObjectURL(finalBlob);
+        const link = document.createElement('a');
+        link.href = url;
+        link.download = finalFileName;
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+        
+        // Also trigger JSON download as backup
+        await triggerDownload();
+      }
+    } catch (err) {
+      console.error('Native save failed, fallback to browser download:', err);
+      const url = URL.createObjectURL(finalBlob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = finalFileName;
+      link.click();
+    }
+
+    setExportProgress(100);
     setShowExportSuccess(true);
     if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
     
@@ -1859,8 +2006,9 @@ export default function Editor({ project, onBack }: EditorProps) {
                           <p className="text-[11px] text-white/40 uppercase tracking-widest font-bold">Mohon jangan tutup aplikasi ini</p>
                     <p className="text-[9px] text-[#00c2cb] uppercase tracking-[0.2em] italic font-black animate-pulse">
                       {exportProgress < 20 ? 'Menyiapkan aset...' : 
-                       exportProgress < 50 ? 'Memproses filter...' : 
-                       exportProgress < 85 ? 'Encoding frame...' : 'Menyimpan Proyek ke Android...'}
+                       exportProgress < 60 ? 'Memproses filter...' : 
+                       exportProgress < 80 ? 'Encoding frame...' : 
+                       exportProgress < 95 ? 'Mengonversi ke MP4 (HQ)...' : 'Menyimpan Proyek ke Android...'}
                     </p>
                     <p className="text-[8px] text-white/20 uppercase tracking-widest mt-2">
                        Setelah selesai, buka file .json di Google Colab untuk MP4
@@ -1962,9 +2110,7 @@ export default function Editor({ project, onBack }: EditorProps) {
                             <span className="text-white">{formatTime(totalDuration)}</span>
                          </div>
                       </div>
-                   </div>
-
-                   <div className="mt-10 pt-10 border-t border-white/5">
+                   </div>                    <div className="mt-10 pt-10 border-t border-white/5 space-y-4">
                       <button 
                         onClick={handleExport}
                         disabled={isExporting}
@@ -1979,6 +2125,17 @@ export default function Editor({ project, onBack }: EditorProps) {
                          )}>
                            {!isExporting && <Download className="w-5 h-5 text-white" />}
                            {isExporting ? `Mengekspor ${exportProgress}%` : 'Mulai Ekspor'}
+                         </span>
+                      </button>
+
+                      <button 
+                        onClick={handleCaptureFrame}
+                        disabled={isExporting}
+                        className="w-full h-12 bg-white/5 hover:bg-white/10 border border-white/5 rounded-xl flex items-center justify-center transition-all active:scale-95 group"
+                      >
+                         <span className="text-white/40 group-hover:text-white font-black uppercase tracking-[0.2em] text-[10px] flex items-center gap-3">
+                           <ImageIcon className="w-4 h-4" />
+                           Ekspor Bingkai (PNG)
                          </span>
                       </button>
                    </div>

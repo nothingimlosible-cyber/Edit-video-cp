@@ -152,6 +152,22 @@ export default function Timeline({
     if (a > 0 && b < 0) return -1;   // Overlays above Audio
     return 1;
   });
+
+  const handleZoom = (direction: 'in' | 'out') => {
+    const prevZoom = zoom;
+    const factor = direction === 'in' ? 1.4 : 0.7;
+    const newZoom = Math.max(10, Math.min(200, zoom * factor));
+    
+    // Zoom centered on playhead logic
+    if (scrollRef.current) {
+      const scrollLeft = scrollRef.current.scrollLeft;
+      const zoomRatio = newZoom / prevZoom;
+      const newScrollLeft = scrollLeft * zoomRatio;
+      setZoom(newZoom);
+      // We don't manually set scrollLeft because the useEffect handles sync, 
+      // but we need to ensure the sync doesn't "jump" too much.
+    }
+  };
   const [lockedLayers, setLockedLayers] = useState<Set<number>>(new Set());
   const [hiddenLayers, setHiddenLayers] = useState<Set<number>>(new Set());
 
@@ -232,6 +248,11 @@ export default function Timeline({
                <span className="text-[10px] font-black text-white bg-white/10 px-1.5 rounded">{clips.find(c => c.id === selectedClipId)?.duration.toFixed(2)}s</span>
              </motion.div>
            )}
+           <div className="flex items-center bg-white/5 rounded-lg p-0.5 border border-white/5">
+             <button onClick={() => handleZoom('out')} className="px-2 py-1 text-[10px] font-black text-white/40 hover:text-white transition-colors">-</button>
+             <div className="w-[1px] h-3 bg-white/10" />
+             <button onClick={() => handleZoom('in')} className="px-2 py-1 text-[10px] font-black text-white/40 hover:text-white transition-colors">+</button>
+           </div>
         </div>
       </div>
 
@@ -244,7 +265,16 @@ export default function Timeline({
       >
         {/* SNAP GUIDE LINE: A very thin cyan line through the whole timeline when snapped */}
         {isSnapped && (
-          <div className="absolute top-[-100vh] bottom-[-100vh] left-1/2 -ml-[0.5px] w-[1px] bg-[#00c2cb]/40 shadow-[0_0_12px_rgba(0,194,203,0.6)]" />
+          <>
+            <div className="absolute top-[-100vh] bottom-[-100vh] left-1/2 -ml-[0.5px] w-[1px] bg-[#00c2cb]/40 shadow-[0_0_12px_rgba(0,194,203,0.6)]" />
+            <motion.div 
+              initial={{ scale: 0.5, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="absolute -top-6 left-1/2 -translate-x-1/2 px-1.5 py-0.5 bg-[#00c2cb] rounded text-[6px] font-black text-black uppercase tracking-tighter"
+            >
+              Magnetic
+            </motion.div>
+          </>
         )}
 
         {/* Glow effect */}
