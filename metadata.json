@@ -1,6 +1,6 @@
 {
   "name": "LanAnonymous Editor",
-  "description": "Professional mobile video editor with 99% CapCut smoothness, magnetic snapping, precision timeline, and native Android export.",
+  "description": "Premium mobile video editor with CapCut-style 60fps export, magnetic timeline, precision tools, and native Android sharing.",
   "requestFramePermissions": [
     "camera",
     "microphone"

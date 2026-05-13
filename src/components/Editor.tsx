@@ -322,21 +322,25 @@ export default function Editor({ project, onBack }: EditorProps) {
     const ctx = canvas.getContext('2d', { alpha: false });
     if (!ctx) return;
 
-    // Detect supported mime types
-    const mimeTypes = [
+    // Select best supported mime type
+    const supportedMimeTypes = [
       'video/webm;codecs=vp9,opus',
       'video/webm;codecs=vp8,opus',
       'video/webm',
       'video/mp4'
     ];
     
-    const mimeType = mimeTypes.find(type => MediaRecorder.isTypeSupported(type)) || '';
-    const extension = mimeType.includes('mp4') ? 'mp4' : 'webm';
+    const mimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(supportedMimeTypes[0])) ? 
+                     supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type)) : 
+                     'video/webm';
+    
+    const extension = (mimeType && mimeType.includes('mp4')) ? 'mp4' : 'webm';
 
     const stream = canvas.captureStream(exportFps);
+    
     const mediaRecorder = new MediaRecorder(stream, {
-      mimeType,
-      videoBitsPerSecond: 15000000 // 15Mbps for high quality & real MB size
+      mimeType: mimeType || 'video/webm',
+      videoBitsPerSecond: 20000000 // 20Mbps for high quality
     });
 
     const chunks: Blob[] = [];
@@ -391,49 +395,55 @@ export default function Editor({ project, onBack }: EditorProps) {
     let finalBlob: Blob = videoBlob;
     let finalFileName = `${project.name || 'Video'}_Result.${extension}`;
 
-    try {
-      setFfmpegLog('Memuat FFmpeg...');
-      const ffmpeg = await getFFmpeg();
-      setExportProgress(88);
-      
-      ffmpeg.on('log', ({ message }) => {
-        setFfmpegLog(message);
-      });
+    // CHECK FOR SHARED ARRAY BUFFER (REQUIRED BY FFMPEG 0.12)
+    const canUseFFmpeg = typeof SharedArrayBuffer !== 'undefined' || window.crossOriginIsolated;
 
-      // Write WebM to FFmpeg FS
-      const webmName = 'input.webm';
-      const mp4Name = 'output.mp4';
-      setFfmpegLog('Menyiapkan file...');
-      await ffmpeg.writeFile(webmName, await fetchFile(videoBlob));
-      
-      // Convert to MP4
-      setFfmpegLog('Mengonversi ke MP4... (Silakan Tunggu)');
-      setExportProgress(90);
-      
-      // Simplified command for better mobile compatibility
-      await ffmpeg.exec([
-        '-i', webmName, 
-        '-c:v', 'libx264', 
-        '-preset', 'ultrafast', 
-        '-crf', '28', // Slightly lower quality for much faster speed on mobile
-        '-movflags', 'faststart',
-        '-pix_fmt', 'yuv420p',
-        mp4Name
-      ]);
-      
-      setExportProgress(95);
-      setFfmpegLog('Membaca hasil ekspor...');
-      const mp4Data = await ffmpeg.readFile(mp4Name);
-      finalBlob = new Blob([(mp4Data as Uint8Array).buffer], { type: 'video/mp4' });
-      finalFileName = `${project.name || 'Video'}_Result.mp4`;
-      
-      // Cleanup
-      await ffmpeg.deleteFile(webmName);
-      await ffmpeg.deleteFile(mp4Name);
-    } catch (ffmpegErr) {
-      console.error('FFmpeg remux failed, using original webm:', ffmpegErr);
-      setFfmpegLog('FFmpeg Gagal: Menggunakan WebM sebagai cadangan...');
-      await new Promise(r => setTimeout(r, 2000));
+    if (canUseFFmpeg) {
+      try {
+        setFfmpegLog('Memuat Sistem Konversi...');
+        const ffmpeg = await getFFmpeg();
+        setExportProgress(88);
+        
+        ffmpeg.on('log', ({ message }) => {
+          setFfmpegLog(message);
+        });
+
+        const webmName = 'input.webm';
+        const mp4Name = 'output.mp4';
+        
+        setFfmpegLog('Mempersiapkan File...');
+        await ffmpeg.writeFile(webmName, await fetchFile(videoBlob));
+        
+        setFfmpegLog('Konversi ke MP4 (High Quality)...');
+        setExportProgress(90);
+        
+        // Optimalkan untuk HP: Ultrafast + CRF 30 (Keseimbangan Speed/Size)
+        await ffmpeg.exec([
+          '-i', webmName, 
+          '-c:v', 'libx264', 
+          '-preset', 'ultrafast', 
+          '-crf', '30', 
+          '-movflags', 'faststart',
+          '-pix_fmt', 'yuv420p',
+          mp4Name
+        ]);
+        
+        setExportProgress(95);
+        setFfmpegLog('Menyiapkan Hasil Akhir...');
+        const mp4Data = await ffmpeg.readFile(mp4Name);
+        finalBlob = new Blob([(mp4Data as Uint8Array).buffer], { type: 'video/mp4' });
+        finalFileName = `${project.name || 'Video'}_Result.mp4`;
+        
+        await ffmpeg.deleteFile(webmName);
+        await ffmpeg.deleteFile(mp4Name);
+      } catch (ffmpegErr) {
+        console.error('FFmpeg failed, falling back to WebM:', ffmpegErr);
+        setFfmpegLog('Konversi Gagal: Menggunakan format WebM (Tetap HD)...');
+        await new Promise(r => setTimeout(r, 1000));
+      }
+    } else {
+      setFfmpegLog('Browser tidak mendukung konversi MP4: Menggunakan WebM HD...');
+      await new Promise(r => setTimeout(r, 1500));
     }
 
     // NATIVE ANDROID/IOS EXPORT LOGIC
@@ -494,12 +504,8 @@ export default function Editor({ project, onBack }: EditorProps) {
     setShowExportSuccess(true);
     if (window.navigator.vibrate) window.navigator.vibrate([100, 50, 100]);
     
-    setTimeout(() => {
-      setShowExportSuccess(false);
-      setIsExporting(false);
-      setShowExportDrawer(false);
-      setCurrentTime(0);
-    }, 3000);
+    // We do NOT auto-close now. User has manual 'Selesai' button in the overlay.
+    setIsExporting(false); 
   };
 
   // Playback timer

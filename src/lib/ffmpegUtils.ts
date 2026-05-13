@@ -7,9 +7,12 @@ export async function getFFmpeg() {
   if (ffmpeg) return ffmpeg;
 
   // Check for SharedArrayBuffer (Required for multi-threaded FFmpeg 0.12+)
-  // If not supported, we might need a single-threaded fallback or skip.
-  const isIsolated = window.crossOriginIsolated || (typeof SharedArrayBuffer !== 'undefined');
-  console.log('Environment is isolated:', isIsolated);
+  const isIsolated = typeof SharedArrayBuffer !== 'undefined';
+  console.log('FFmpeg: SharedArrayBuffer available:', isIsolated);
+
+  if (!isIsolated) {
+    throw new Error('BROWSER_UNSUPPORTED: SharedArrayBuffer is required for MP4 conversion.');
+  }
 
   ffmpeg = new FFmpeg();
   
